@@ -643,6 +643,12 @@ QString flagsToString(la::avdecc::entity::MilanInfoFeaturesFlags const flags) no
 			case la::avdecc::entity::MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning:
 				concatenateFlags(str, "TalkerDynMappingsRunning");
 				break;
+			case la::avdecc::entity::MilanInfoFeaturesFlag::MvuBinding:
+				concatenateFlags(str, "MvuBinding");
+				break;
+			case la::avdecc::entity::MilanInfoFeaturesFlag::TalkerSignalPresence:
+				concatenateFlags(str, "TalkerSignalPresence");
+				break;
 			default:
 				concatenateFlags(str, "Unknown");
 				AVDECC_ASSERT(false, "Not handled!");

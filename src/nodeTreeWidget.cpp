@@ -361,6 +361,7 @@ private:
 				addTextItem(milanInfoItem, "Protocol Version", QString::number(milanInfo.protocolVersion));
 				addFlagsItem(milanInfoItem, "Features", la::avdecc::utils::forceNumeric(milanInfo.featuresFlags.value()), avdecc::helper::flagsToString(milanInfo.featuresFlags));
 				addTextItem(milanInfoItem, "Certification Version", static_cast<std::string>(milanInfo.certificationVersion));
+				addTextItem(milanInfoItem, "Specification Version", static_cast<std::string>(milanInfo.specificationVersion));
 			}
 		}
 
