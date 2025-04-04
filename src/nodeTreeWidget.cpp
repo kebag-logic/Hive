@@ -343,21 +343,34 @@ private:
 				auto* milanInfoItem = new QTreeWidgetItem(q);
 				milanInfoItem->setText(0, "Milan Info");
 
+				{
+					auto* const compatibilityLabel = addChangingTextItem(milanInfoItem, "Compatibility");
+					auto const updateCompatibilityLabel = [this, compatibilityLabel](la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion)
+					{
+						if (entityID == _controlledEntityID)
+						{
+							auto compatStr = QString{ "Not Milan Compatible" };
+							if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::MilanWarning))
+							{
+								compatStr = QString{ "Milan Compatible v%1 (with warnings)" }.arg(milanCompatibleVersion.to_string(2).c_str());
+							}
+							else if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan))
+							{
+								compatStr = QString{ "Milan Compatible v%1" }.arg(milanCompatibleVersion.to_string(2).c_str());
+							}
+
+							compatibilityLabel->setText(compatStr);
+						}
+					};
+
+					// Update text now
+					updateCompatibilityLabel(_controlledEntityID, entity.getCompatibilityFlags(), entity.getMilanCompatibilityVersion());
+
+					// Listen for changes
+					connect(&controllerManager, &hive::modelsLibrary::ControllerManager::compatibilityChanged, compatibilityLabel, updateCompatibilityLabel);
+				}
+
 				auto const milanInfo = *milanInfoOpt;
-				auto const compat = entity.getCompatibilityFlags();
-				auto const compatVersion = entity.getMilanCompatibilityVersion();
-
-				auto compatStr = QString{ "Not Milan Compatible" };
-				if (compat.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::MilanWarning))
-				{
-					compatStr = QString{ "Milan Compatible v%1 (with warnings)" }.arg(compatVersion.to_string(2).c_str());
-				}
-				else if (compat.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan))
-				{
-					compatStr = QString{ "Milan Compatible v%1" }.arg(compatVersion.to_string(2).c_str());
-				}
-
-				addTextItem(milanInfoItem, "Compatibility", compatStr);
 				addTextItem(milanInfoItem, "Protocol Version", QString::number(milanInfo.protocolVersion));
 				addFlagsItem(milanInfoItem, "Features", la::avdecc::utils::forceNumeric(milanInfo.featuresFlags.value()), avdecc::helper::flagsToString(milanInfo.featuresFlags));
 				addTextItem(milanInfoItem, "Certification Version", static_cast<std::string>(milanInfo.certificationVersion));
