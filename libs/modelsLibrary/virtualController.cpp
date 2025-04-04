@@ -719,6 +719,16 @@ void VirtualController::getMediaClockReferenceInfo(la::avdecc::UniqueIdentifier 
 	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
 }
 
+void VirtualController::bindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, streamIndex, talkerStream, flags);
+}
+
+void VirtualController::unbindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, streamIndex);
+}
+
 void VirtualController::connectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	la::avdecc::utils::invokeProtectedHandler(handler, this, talkerStream, listenerStream, std::uint16_t{ 1u }, la::avdecc::entity::ConnectionFlags{}, la::avdecc::entity::LocalEntity::ControlStatus::Success);
