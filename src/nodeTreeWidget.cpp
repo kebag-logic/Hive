@@ -315,6 +315,10 @@ private:
 						auto const chksumOpt = controllerManager.computeEntityModelChecksum(entity, std::uint32_t{ 4u });
 						addTextItem(checksumItem, "AEM Checksum v4", QString::fromStdString(chksumOpt ? (*chksumOpt) : std::string{ "Must enable 'Full AEM Enumeration'" }));
 					}
+					{
+						auto const chksumOpt = controllerManager.computeEntityModelChecksum(entity, std::uint32_t{ 5u });
+						addTextItem(checksumItem, "AEM Checksum v5", QString::fromStdString(chksumOpt ? (*chksumOpt) : std::string{ "Must enable 'Full AEM Enumeration'" }));
+					}
 				}
 				addFlagsItem(descriptorItem, "Talker Capabilities", la::avdecc::utils::forceNumeric(talkerCaps.value()), avdecc::helper::capabilitiesToString(talkerCaps));
 				addTextItem(descriptorItem, "Talker Max Sources", QString::number(e.getTalkerStreamSources()));
