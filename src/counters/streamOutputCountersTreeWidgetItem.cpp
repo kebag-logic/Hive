@@ -135,9 +135,11 @@ void StreamOutputCountersTreeWidgetItem::updateCounters(la::avdecc::entity::mode
 		{
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
 				updateCounters(counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>());
+				this->setText(0, "Counters (Milan v1.2)");
 				break;
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 				updateCounters(counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>());
+				this->setText(0, "Counters (1722.1 v2021)");
 				break;
 			default:
 				AVDECC_ASSERT(false, "Unhandled CounterType");
