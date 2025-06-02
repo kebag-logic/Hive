@@ -2355,19 +2355,36 @@ public:
 				if (streamOutputNode.dynamicModel.counters)
 				{
 					auto const& counters = *streamOutputNode.dynamicModel.counters;
+					try
 					{
-						auto const it = counters.find(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStart);
-						if (it != counters.end())
+						switch (counters.getCounterType())
 						{
-							node.setStreamStartCounter(it->second);
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+							{
+								auto const milan12Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+								{
+									if (auto const it = milan12Counters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart); it != milan12Counters.end())
+									{
+										node.setStreamStartCounter(it->second);
+									}
+								}
+								{
+									if (auto const it = milan12Counters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStop); it != milan12Counters.end())
+									{
+										node.setStreamStopCounter(it->second);
+									}
+								}
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
+								[[fallthrough]];
+							default:
+								break;
 						}
 					}
+					catch (std::invalid_argument const&)
 					{
-						auto const it = counters.find(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStop);
-						if (it != counters.end())
-						{
-							node.setStreamStopCounter(it->second);
-						}
+						// Ignore
 					}
 				}
 			};
@@ -3374,25 +3391,44 @@ public:
 				{
 					auto changed = false;
 
-					for (auto const [flag, counter] : counters)
+					try
 					{
-						switch (flag)
+						switch (counters.getCounterType())
 						{
-							case la::avdecc::entity::StreamOutputCounterValidFlag::StreamStart:
-								if (node->setStreamStartCounter(counter))
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+							{
+								auto const milan12Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+								for (auto const [flag, counter] : milan12Counters)
 								{
-									changed = true;
+									switch (flag)
+									{
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart:
+											if (node->setStreamStartCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStop:
+											if (node->setStreamStopCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										default:
+											break;
+									}
 								}
 								break;
-							case la::avdecc::entity::StreamOutputCounterValidFlag::StreamStop:
-								if (node->setStreamStopCounter(counter))
-								{
-									changed = true;
-								}
-								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
+								[[fallthrough]];
 							default:
 								break;
 						}
+					}
+					catch (std::invalid_argument const&)
+					{
+						// Ignore
 					}
 
 					if (changed)

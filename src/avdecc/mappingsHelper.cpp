@@ -288,9 +288,26 @@ void buildStreamMappings(la::avdecc::controller::ControlledEntity const* const c
 				try
 				{
 					auto const& counters = *streamNode->dynamicModel.counters;
-					auto const startValue = counters.at(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStart);
-					auto const stopValue = counters.at(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStop);
-					userData.isStreaming = startValue > stopValue;
+					switch (counters.getCounterType())
+					{
+						case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+						{
+							auto const milan12Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+							auto const startValue = milan12Counters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart);
+							auto const stopValue = milan12Counters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStop);
+							userData.isStreaming = startValue > stopValue;
+							break;
+						}
+						case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
+							[[fallthrough]];
+						default:
+							userData.isStreaming = false;
+							break;
+					}
+				}
+				catch (std::invalid_argument const&)
+				{
+					// Ignore
 				}
 				catch (std::out_of_range const&)
 				{

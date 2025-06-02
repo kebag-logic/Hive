@@ -40,11 +40,15 @@ public:
 	StreamOutputCountersTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters, QTreeWidget* parent = nullptr);
 
 private:
+	template<typename CountersType>
+	void createCounters(CountersType const& counters);
+	template<typename CountersType>
+	void updateCounters(CountersType const& counters);
 	void updateCounters(la::avdecc::entity::model::StreamOutputCounters const& counters);
 
 	la::avdecc::UniqueIdentifier const _entityID{};
 	la::avdecc::entity::model::StreamIndex const _streamIndex{ 0u };
 
 	// Counters
-	std::map<la::avdecc::entity::StreamOutputCounterValidFlag, QTreeWidgetItem*> _counters{};
+	std::map<la::avdecc::entity::model::DescriptorCounterValidFlag, QTreeWidgetItem*> _counters{};
 };
