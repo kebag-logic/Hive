@@ -27,7 +27,7 @@
 template<typename CounterNamesMap>
 void StreamOutputCountersTreeWidgetItem::createCounters(CounterNamesMap const& counterNamesMap)
 {
-	using CounterType = std::decay_t<decltype(counterNamesMap)>::key_type;
+	using CounterType = typename std::decay_t<decltype(counterNamesMap)>::key_type;
 	for (auto bitPos = 0u; bitPos < (sizeof(std::underlying_type_t<CounterType>) * 8); ++bitPos)
 	{
 		auto const flag = static_cast<CounterType>(1u << bitPos);
