@@ -409,7 +409,6 @@ public:
 		qRegisterMetaType<la::avdecc::entity::model::ClockDomainCounters>("la::avdecc::entity::model::ClockDomainCounters");
 		qRegisterMetaType<la::avdecc::entity::model::StreamInputCounters>("la::avdecc::entity::model::StreamInputCounters");
 		qRegisterMetaType<la::avdecc::entity::model::StreamOutputCounters>("la::avdecc::entity::model::StreamOutputCounters");
-		qRegisterMetaType<la::avdecc::entity::model::SystemUniqueIdentifier>("la::avdecc::entity::model::SystemUniqueIdentifier");
 		qRegisterMetaType<la::avdecc::entity::model::MediaClockReferenceInfo>("la::avdecc::entity::model::MediaClockReferenceInfo");
 		qRegisterMetaType<la::avdecc::controller::Controller::QueryCommandError>("la::avdecc::controller::Controller::QueryCommandError");
 		qRegisterMetaType<la::avdecc::controller::ControlledEntity::InterfaceLinkStatus>("la::avdecc::controller::ControlledEntity::InterfaceLinkStatus");
@@ -788,9 +787,9 @@ private:
 	{
 		emit maxTransitTimeChanged(entity->getEntity().getEntityID(), streamIndex, maxTransitTime);
 	}
-	virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept override
+	virtual void onSystemUniqueIDChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName) noexcept override
 	{
-		emit systemUniqueIDChanged(entity->getEntity().getEntityID(), systemUniqueID);
+		emit systemUniqueIDChanged(entity->getEntity().getEntityID(), systemUniqueID, QString::fromStdString(systemName));
 	}
 	virtual void onMediaClockReferenceInfoChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& mcrInfo) noexcept override
 	{
@@ -2578,7 +2577,7 @@ private:
 	}
 
 	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique) */
-	virtual void setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID, BeginCommandHandler const& beginHandler = {}, SetSystemUniqueIDHandler const& resultHandler = {}) noexcept override
+	virtual void setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::UniqueIdentifier const systemUniqueID, QString const& name, BeginCommandHandler const& beginHandler = {}, SetSystemUniqueIDHandler const& resultHandler = {}) noexcept override
 	{
 		auto controller = getController();
 		if (controller)
@@ -2591,7 +2590,7 @@ private:
 			{
 				emit beginMilanCommand(targetEntityID, MilanCommandType::SetSystemUniqueID, la::avdecc::entity::model::getInvalidDescriptorIndex());
 			}
-			controller->setSystemUniqueID(targetEntityID, systemUniqueID,
+			controller->setSystemUniqueID(targetEntityID, systemUniqueID, name.toStdString(),
 				[this, targetEntityID, resultHandler](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status) noexcept
 				{
 					if (resultHandler)

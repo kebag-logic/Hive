@@ -1802,17 +1802,6 @@ public:
 				// Send changes
 				switch (commandType)
 				{
-					case hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID:
-						try
-						{
-							auto const systemUniqueID = static_cast<la::avdecc::entity::model::SystemUniqueIdentifier>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::SystemUniqueIdentifier>(newText.toStdString().c_str()));
-							hive::modelsLibrary::ControllerManager::getInstance().setSystemUniqueID(_controlledEntityID, systemUniqueID, textEntry->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID), textEntry->getResultHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID, oldText));
-						}
-						catch (std::invalid_argument const& e)
-						{
-							QMessageBox::warning(q_ptr, "", QString("Cannot set System Unique ID: Invalid EID: %1").arg(e.what()));
-						}
-						break;
 					case hive::modelsLibrary::ControllerManager::MilanCommandType::SetMediaClockReferenceInfo:
 						try
 						{
@@ -1848,19 +1837,6 @@ public:
 		{
 			switch (commandType)
 			{
-				case hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID:
-				{
-					// TODO
-					/*connect(&hive::modelsLibrary::ControllerManager::getInstance(), &hive::modelsLibrary::ControllerManager::associationIDChanged, textEntry,
-						[this, textEntry](la::avdecc::UniqueIdentifier const entityID, std::optional<la::avdecc::UniqueIdentifier> const& associationID)
-						{
-							if (entityID == _controlledEntityID)
-							{
-								textEntry->setCurrentData(associationID ? hive::modelsLibrary::helper::uniqueIdentifierToString(*associationID) : "");
-							}
-						});*/
-					break;
-				}
 				case hive::modelsLibrary::ControllerManager::MilanCommandType::SetMediaClockReferenceInfo:
 				{
 					auto const customTuple = std::any_cast<std::tuple<la::avdecc::entity::model::ClockDomainIndex, MediaClockReferenceInfoType>>(customData);
