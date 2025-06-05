@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)
+- Incorrect AEM checksum values on some platforms
 
 ## [1.3.1] - 2025-04-18
 ### Added
