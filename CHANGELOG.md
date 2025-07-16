@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for both 1722.1 and Milan 1.2 Stream Output Counters
+- Support for Presentation Time Offset configuration in Stream Output descriptor
 
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)

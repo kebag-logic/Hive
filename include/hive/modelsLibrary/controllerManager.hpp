@@ -92,6 +92,7 @@ public:
 		AbortOperation,
 		IdentifyEntity,
 		SetMaxTransitTime,
+		SmartSetMaxTransitTime,
 	};
 
 	enum class MilanCommandType
@@ -155,6 +156,8 @@ public:
 	using StartUploadMemoryObjectOperationHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::OperationID const operationID)>;
 	using AbortOperationHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using IdentifyEntityHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
+	using SetMaxTransitTimeHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
+	using SmartSetMaxTransitTimeHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using SetSystemUniqueIDHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
 	using SetMediaClockReferenceInfoHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
 	/* ACMP handlers to override the global ACMP result process */
@@ -295,6 +298,8 @@ public:
 	virtual void startStoreAndRebootMemoryObjectOperation(la::avdecc::UniqueIdentifier targetEntityID, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, BeginCommandHandler const& beginHandler = {}, StartStoreAndRebootMemoryObjectOperationHandler const& resultHandler = {}) noexcept = 0;
 	virtual void startUploadMemoryObjectOperation(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, BeginCommandHandler const& beginHandler = {}, StartUploadMemoryObjectOperationHandler const& resultHandler = {}) noexcept = 0;
 	virtual void abortOperation(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, BeginCommandHandler const& beginHandler = {}, AbortOperationHandler const& resultHandler = {}) noexcept = 0;
+	virtual void setMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler = {}, SetMaxTransitTimeHandler const& resultHandler = {}) noexcept = 0;
+	virtual void smartSetMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler = {}, SmartSetMaxTransitTimeHandler const& resultHandler = {}) noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AA */
 	/* For all AECP-AA commands, the provided handler will be called from the network thread. */

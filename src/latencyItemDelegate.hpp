@@ -72,9 +72,7 @@ public:
 	void setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const override;
 
 private:
-	void updatePossibleLatencyValues(LatencyComboBox* const combobox, la::avdecc::entity::model::StreamFormat const& streamFormat) const noexcept;
 	void updateCurrentLatencyValue(LatencyComboBox* const combobox, std::chrono::nanoseconds const& latency) const noexcept;
-	std::string labelFromLatency(std::chrono::nanoseconds const& latency) const noexcept;
 
 	la::avdecc::UniqueIdentifier _entityID{};
 };

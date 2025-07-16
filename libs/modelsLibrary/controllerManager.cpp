@@ -2502,6 +2502,62 @@ private:
 		}
 	}
 
+	virtual void setMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler, SetMaxTransitTimeHandler const& resultHandler) noexcept override
+	{
+		auto controller = getController();
+		if (controller)
+		{
+			if (beginHandler)
+			{
+				la::avdecc::utils::invokeProtectedHandler(beginHandler, targetEntityID);
+			}
+			else
+			{
+				emit beginAecpCommand(targetEntityID, AecpCommandType::SetMaxTransitTime, streamIndex);
+			}
+			controller->setMaxTransitTime(targetEntityID, streamIndex, maxTransitTime,
+				[this, targetEntityID, streamIndex, resultHandler](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept
+				{
+					if (resultHandler)
+					{
+						la::avdecc::utils::invokeProtectedHandler(resultHandler, targetEntityID, status);
+					}
+					else
+					{
+						emit endAecpCommand(targetEntityID, AecpCommandType::SetMaxTransitTime, streamIndex, status);
+					}
+				});
+		}
+	}
+
+	virtual void smartSetMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler, SmartSetMaxTransitTimeHandler const& resultHandler) noexcept override
+	{
+		auto controller = getController();
+		if (controller)
+		{
+			if (beginHandler)
+			{
+				la::avdecc::utils::invokeProtectedHandler(beginHandler, targetEntityID);
+			}
+			else
+			{
+				emit beginAecpCommand(targetEntityID, AecpCommandType::SmartSetMaxTransitTime, streamIndex);
+			}
+			controller->smartSetMaxTransitTime(targetEntityID, streamIndex, maxTransitTime,
+				[this, targetEntityID, streamIndex, resultHandler](la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept
+				{
+					if (resultHandler)
+					{
+						la::avdecc::utils::invokeProtectedHandler(resultHandler, targetEntityID, status);
+					}
+					else
+					{
+						emit endAecpCommand(targetEntityID, AecpCommandType::SmartSetMaxTransitTime, streamIndex, status);
+					}
+				});
+		}
+	}
+
 	/* Enumeration and Control Protocol (AECP) AA */
 	virtual void readDeviceMemory(la::avdecc::UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, la::avdecc::controller::Controller::ReadDeviceMemoryProgressHandler const& progressHandler, la::avdecc::controller::Controller::ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept override
 	{
@@ -2819,6 +2875,8 @@ QString ControllerManager::typeToString(AecpCommandType const type) noexcept
 		case AecpCommandType::IdentifyEntity:
 			return "Identify Entity";
 		case AecpCommandType::SetMaxTransitTime:
+			[[fallthrough]];
+		case AecpCommandType::SmartSetMaxTransitTime:
 			return "Set Max Transit Time";
 		default:
 			AVDECC_ASSERT(false, "Unhandled type");

@@ -66,6 +66,7 @@ private:
 	QTreeWidgetItem* _streamFlagsEx{ nullptr };
 	QTreeWidgetItem* _probingStatus{ nullptr };
 	QTreeWidgetItem* _acmpStatus{ nullptr };
+	QTreeWidgetItem* _presentationTime{ nullptr };
 
 	// Connections
 	QListWidget* _connections{ nullptr };

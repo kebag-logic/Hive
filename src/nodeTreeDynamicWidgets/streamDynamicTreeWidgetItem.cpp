@@ -19,6 +19,7 @@
 
 #include "streamDynamicTreeWidgetItem.hpp"
 #include "streamFormatComboBox.hpp"
+#include "latencyComboBox.hpp"
 #include "talkerStreamConnectionWidget.hpp"
 #include "nodeTreeWidget.hpp"
 
@@ -45,64 +46,65 @@ StreamDynamicTreeWidgetItem::StreamDynamicTreeWidgetItem(la::avdecc::UniqueIdent
 
 	auto& manager = hive::modelsLibrary::ControllerManager::getInstance();
 	auto listenerEntity = manager.getControlledEntity(entityID);
-
-	auto* currentFormatItem = new QTreeWidgetItem(this);
-	currentFormatItem->setText(0, "Stream Format");
-
 	la::avdecc::entity::model::StreamNodeDynamicModel const* const dynamicModel = inputDynamicModel ? static_cast<decltype(dynamicModel)>(inputDynamicModel) : static_cast<decltype(dynamicModel)>(outputDynamicModel);
 
-	auto* formatComboBox = new StreamFormatComboBox{};
-	formatComboBox->setStreamFormats(staticModel->formats);
-	parent->setItemWidget(currentFormatItem, 1, formatComboBox);
-
-	// Send changes
-	formatComboBox->setDataChangedHandler(
-		[this, parent, formatComboBox](auto const& previousStreamFormat, auto const& newStreamFormat)
-		{
-			if (_streamType == la::avdecc::entity::model::DescriptorType::StreamInput)
-			{
-				avdecc::helper::smartChangeInputStreamFormat(parent, false, _entityID, _streamIndex, newStreamFormat, formatComboBox,
-					[this, parent, formatComboBox, previousStreamFormat](hive::modelsLibrary::CommandsExecutor::ExecutorResult const result)
-					{
-						if (result.getResult() != hive::modelsLibrary::CommandsExecutor::ExecutorResult::Result::Success)
-						{
-							formatComboBox->setCurrentStreamFormat(previousStreamFormat);
-						}
-					});
-			}
-			else if (_streamType == la::avdecc::entity::model::DescriptorType::StreamOutput)
-			{
-				hive::modelsLibrary::ControllerManager::getInstance().setStreamOutputFormat(_entityID, _streamIndex, newStreamFormat, formatComboBox->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamFormat), formatComboBox->getResultHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamFormat, previousStreamFormat));
-			}
-		});
-
-	// Listen for changes
-	connect(&manager, &hive::modelsLibrary::ControllerManager::streamFormatChanged, formatComboBox,
-		[this, formatComboBox](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
-		{
-			if (entityID == _entityID && descriptorType == _streamType && streamIndex == _streamIndex)
-			{
-				formatComboBox->setCurrentStreamFormat(streamFormat);
-			}
-		});
-
-	// Update now
-	formatComboBox->setCurrentStreamFormat(dynamicModel->streamFormat);
-
-	//
-
+	// Create fields helper function
+	auto const createField = [this](auto const& label)
 	{
-		// Create fields
-		auto const createField = [this](auto const& label)
-		{
-			auto* const widget = new QTreeWidgetItem(this);
-			widget->setText(0, label);
-			widget->setText(1, "No Value");
-			widget->setForeground(0, QColor{ qtMate::material::color::disabledForegroundColor() });
-			widget->setForeground(1, QColor{ qtMate::material::color::disabledForegroundColor() });
-			return widget;
-		};
+		auto* const widget = new QTreeWidgetItem(this);
+		widget->setText(0, label);
+		widget->setText(1, "No Value");
+		widget->setForeground(0, QColor{ qtMate::material::color::disabledForegroundColor() });
+		widget->setForeground(1, QColor{ qtMate::material::color::disabledForegroundColor() });
+		return widget;
+	};
 
+	// Stream format
+	{
+		auto* currentFormatItem = new QTreeWidgetItem(this);
+		currentFormatItem->setText(0, "Stream Format");
+
+		auto* formatComboBox = new StreamFormatComboBox{};
+		formatComboBox->setStreamFormats(staticModel->formats);
+		parent->setItemWidget(currentFormatItem, 1, formatComboBox);
+
+		// Send changes
+		formatComboBox->setDataChangedHandler(
+			[this, parent, formatComboBox](auto const& previousStreamFormat, auto const& newStreamFormat)
+			{
+				if (_streamType == la::avdecc::entity::model::DescriptorType::StreamInput)
+				{
+					avdecc::helper::smartChangeInputStreamFormat(parent, false, _entityID, _streamIndex, newStreamFormat, formatComboBox,
+						[this, parent, formatComboBox, previousStreamFormat](hive::modelsLibrary::CommandsExecutor::ExecutorResult const result)
+						{
+							if (result.getResult() != hive::modelsLibrary::CommandsExecutor::ExecutorResult::Result::Success)
+							{
+								formatComboBox->setCurrentStreamFormat(previousStreamFormat);
+							}
+						});
+				}
+				else if (_streamType == la::avdecc::entity::model::DescriptorType::StreamOutput)
+				{
+					hive::modelsLibrary::ControllerManager::getInstance().setStreamOutputFormat(_entityID, _streamIndex, newStreamFormat, formatComboBox->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamFormat), formatComboBox->getResultHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamFormat, previousStreamFormat));
+				}
+			});
+
+		// Listen for changes
+		connect(&manager, &hive::modelsLibrary::ControllerManager::streamFormatChanged, formatComboBox,
+			[this, formatComboBox](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
+			{
+				if (entityID == _entityID && descriptorType == _streamType && streamIndex == _streamIndex)
+				{
+					formatComboBox->setCurrentStreamFormat(streamFormat);
+				}
+			});
+
+		// Update now
+		formatComboBox->setCurrentStreamFormat(dynamicModel->streamFormat);
+	}
+
+	// Common fields
+	{
 		_streamFormat = createField("Current Stream Format");
 		_streamWait = createField("Streaming Wait");
 		_isClassB = createField("Class B");
@@ -185,6 +187,62 @@ StreamDynamicTreeWidgetItem::StreamDynamicTreeWidgetItem(la::avdecc::UniqueIdent
 	// StreamOutput dynamic info
 	if (outputDynamicModel)
 	{
+		// Presentation Time Offset
+		{
+			auto* currentPTOItem = new QTreeWidgetItem(this);
+			currentPTOItem->setText(0, "Presentation Time Offset");
+
+			auto* latencyComboBox = new LatencyComboBox{};
+			parent->setItemWidget(currentPTOItem, 1, latencyComboBox);
+
+			// Send changes
+			latencyComboBox->setDataChangedHandler(
+				[this, parent, latencyComboBox](LatencyComboBox_t const& previousLatency, LatencyComboBox_t const& newLatency)
+				{
+					hive::modelsLibrary::ControllerManager::getInstance().smartSetMaxTransitTime(_entityID, _streamIndex, std::get<0>(newLatency), latencyComboBox->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SmartSetMaxTransitTime), latencyComboBox->getResultHandler(hive::modelsLibrary::ControllerManager::AecpCommandType::SmartSetMaxTransitTime, previousLatency));
+				});
+
+			// Listen for changes
+			connect(&manager, &hive::modelsLibrary::ControllerManager::streamFormatChanged, latencyComboBox,
+				[this, latencyComboBox](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
+				{
+					if (entityID == _entityID && descriptorType == la::avdecc::entity::model::DescriptorType::StreamOutput && streamIndex == _streamIndex)
+					{
+						latencyComboBox->updatePossibleLatencyValues(streamFormat);
+
+						auto& manager = hive::modelsLibrary::ControllerManager::getInstance();
+						auto controlledEntity = manager.getControlledEntity(_entityID);
+						if (controlledEntity)
+						{
+							try
+							{
+								auto const& entityNode = controlledEntity->getEntityNode();
+								auto const configurationIndex = entityNode.dynamicModel.currentConfiguration;
+
+								auto const& streamOutput = controlledEntity->getStreamOutputNode(configurationIndex, _streamIndex);
+								latencyComboBox->setCurrentLatencyData(LatencyComboBox_t{ streamOutput.dynamicModel.presentationTimeOffset, LatencyComboBox::labelFromLatency(streamOutput.dynamicModel.presentationTimeOffset), std::nullopt });
+							}
+							catch (la::avdecc::controller::ControlledEntity::Exception const&)
+							{
+								// Ignore
+							}
+						}
+					}
+				});
+			connect(&manager, &hive::modelsLibrary::ControllerManager::maxTransitTimeChanged, latencyComboBox,
+				[this, latencyComboBox](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime)
+				{
+					if (entityID == _entityID && streamIndex == _streamIndex)
+					{
+						latencyComboBox->setCurrentLatencyData(LatencyComboBox_t{ maxTransitTime, LatencyComboBox::labelFromLatency(maxTransitTime), std::nullopt });
+					}
+				});
+
+			// Update now
+			latencyComboBox->updatePossibleLatencyValues(dynamicModel->streamFormat);
+			latencyComboBox->setCurrentLatencyData(LatencyComboBox_t{ outputDynamicModel->presentationTimeOffset, LatencyComboBox::labelFromLatency(outputDynamicModel->presentationTimeOffset), std::nullopt });
+		}
+
 		// Create fields
 		auto* item = new QTreeWidgetItem(this);
 		item->setText(0, "Connections");
