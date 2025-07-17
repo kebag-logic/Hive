@@ -43,7 +43,6 @@ public:
 
 	AecpCommandComboBox(QWidget* parent = nullptr)
 		: qtMate::widgets::ComboBox{ parent }
-		, _parent{ parent }
 	{
 		// Send changes
 		connect(this, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -140,11 +139,14 @@ public:
 			QMetaObject::invokeMethod(this,
 				[this, commandType, previousData, status]()
 				{
+					// Warning: This is wrong and will cause a crash if the component is deleted before the command returns.
+					// This can happen if the combo box is attached to a descriptor and the entity goes offline before the result is received.
+					// We need to find a better way to handle this, probably by using a signal instead of a direct call.
 					if (status != la::avdecc::entity::ControllerEntity::AemCommandStatus::Success)
 					{
 						setCurrentData(previousData);
 
-						QMessageBox::warning(_parent, "", "<i>" + hive::modelsLibrary::ControllerManager::typeToString(commandType) + "</i> failed:<br>" + QString::fromStdString(la::avdecc::entity::ControllerEntity::statusToString(status)));
+						QMessageBox::warning(qobject_cast<QWidget*>(parent()), "", "<i>" + hive::modelsLibrary::ControllerManager::typeToString(commandType) + "</i> failed:<br>" + QString::fromStdString(la::avdecc::entity::ControllerEntity::statusToString(status)));
 					}
 					setEnabled(true);
 				});
@@ -156,7 +158,6 @@ protected:
 	using QComboBox::setCurrentIndex;
 	using QComboBox::currentData;
 	using QComboBox::currentIndexChanged;
-	QWidget* _parent{ nullptr };
 	Data _data{};
 	DataType _previousData{};
 	IndexChangedHandler _indexChangedHandler{};
