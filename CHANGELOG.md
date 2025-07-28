@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for both 1722.1 and Milan 1.2 Stream Output Counters
 - Support for Presentation Time Offset configuration in Stream Output descriptor
-- Compatibility Change Events window (in Entity Descriptor Diagnostics)
+- Device compatibility reporting
+  - Warning indicators for devices that have had compatibility change events
+  - Compatibility Change Events window (in Entity Descriptor Diagnostics)
 
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)

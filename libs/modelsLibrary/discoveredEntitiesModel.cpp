@@ -495,9 +495,13 @@ private:
 				// Get compatibility info
 				auto const [protocolCompatibility, milanCompatibleVersion, isRedundant] = computeCompatibilityInfo(entity.getMilanInfo(), entity.getCompatibilityFlags(), entity.getMilanCompatibilityVersion());
 
+				// Check if entity has had compatibility change events
+				auto const& compatibilityChangedEvents = entity.getCompatibilityChangedEvents();
+				auto const hadCompatibilityChangeEvent = !compatibilityChangedEvents.empty();
+
 				// Build a discovered entity
 				auto discoveredEntity = Entity{ entityID, isAemSupported, hasAnyConfiguration, entity.isVirtual(), entity.areUnsolicitedNotificationsSupported(), e.getEntityModelID(), firmwareVersion, firmwareUploadMemoryIndex, entity.getMilanInfo(), std::move(macAddresses), helper::entityName(entity), helper::groupName(entity), entity.isSubscribedToUnsolicitedNotifications(), protocolCompatibility, milanCompatibleVersion, isRedundant, e.getEntityCapabilities(), computeExclusiveInfo(isAemSupported && hasAnyConfiguration, entity.getAcquireState(), entity.getOwningControllerID()), computeExclusiveInfo(isAemSupported && hasAnyConfiguration, entity.getLockState(), entity.getLockingControllerID()), std::move(gptpInfo), e.getAssociationID(), std::move(mediaClockReferences), entity.isIdentifying(),
-					!statisticsCounters.empty(), diagnostics.redundancyWarning, std::move(clockDomainInfo), {}, diagnostics.streamInputOverLatency, diagnostics.controlCurrentValueOutOfBounds };
+					!statisticsCounters.empty(), diagnostics.redundancyWarning, std::move(clockDomainInfo), {}, diagnostics.streamInputOverLatency, diagnostics.controlCurrentValueOutOfBounds, hadCompatibilityChangeEvent };
 
 				// Insert at the end
 				auto const row = _model->rowCount();
@@ -608,7 +612,10 @@ private:
 					data.milanCompatibleVersion = compatVersion;
 					data.isRedundant = isRedundant;
 
-					la::avdecc::utils::invokeProtectedMethod(&Model::entityInfoChanged, _model, idx, data, Model::ChangedInfoFlags{ Model::ChangedInfoFlag::Compatibility });
+					// Mark that this entity has had a compatibility change event (which is different than the starting compatibility of the entity)
+					data.hadCompatibilityChangeEvent = true;
+
+					la::avdecc::utils::invokeProtectedMethod(&Model::entityInfoChanged, _model, idx, data, Model::ChangedInfoFlags{ Model::ChangedInfoFlag::Compatibility, Model::ChangedInfoFlag::CompatibilityChangeEvent });
 				}
 			}
 			catch (...)

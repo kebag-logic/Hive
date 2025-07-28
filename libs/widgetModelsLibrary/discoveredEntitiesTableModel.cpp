@@ -250,6 +250,10 @@ static ErrorIconItemDelegate::ErrorType getErrorType(modelsLibrary::DiscoveredEn
 	{
 		return ErrorIconItemDelegate::ErrorType::Warning;
 	}
+	if (e.hadCompatibilityChangeEvent)
+	{
+		return ErrorIconItemDelegate::ErrorType::Warning;
+	}
 	if (!e.controlsWithOutOfBoundsValue.empty())
 	{
 		return ErrorIconItemDelegate::ErrorType::Warning;
@@ -305,6 +309,10 @@ static QString getErrorTooltip(modelsLibrary::DiscoveredEntitiesModel::Entity co
 	if (e.hasRedundancyWarning)
 	{
 		tooltip.append("Primary and Secondary interfaces connected to the same network");
+	}
+	if (e.hadCompatibilityChangeEvent)
+	{
+		tooltip.append("Entity compatibility has changed during this session");
 	}
 	if (e.areUnsolicitedNotificationsSupported && !e.isSubscribedToUnsol)
 	{
@@ -735,6 +743,8 @@ std::optional<std::pair<DiscoveredEntitiesTableModel::EntityDataFlag, RolesList>
 			return std::make_pair(EntityDataFlag::EntityStatus, RolesList{ la::avdecc::utils::to_integral(QtUserRoles::ErrorRole) });
 		case ChangedInfoFlag::Compatibility:
 			return std::make_pair(EntityDataFlag::Compatibility, RolesList{ Qt::DisplayRole });
+		case ChangedInfoFlag::CompatibilityChangeEvent:
+			return std::make_pair(EntityDataFlag::EntityStatus, RolesList{ la::avdecc::utils::to_integral(QtUserRoles::ErrorRole) });
 		case ChangedInfoFlag::EntityCapabilities:
 			// TODO (not displayed yet)
 			break;
