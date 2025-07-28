@@ -1535,6 +1535,8 @@ QString loggerLevelToString(la::avdecc::logger::Level const& level) noexcept
 			return "Warning";
 		case la::avdecc::logger::Level::Error:
 			return "Error";
+		case la::avdecc::logger::Level::Compat:
+			return "Compatibility";
 		case la::avdecc::logger::Level::None:
 			return "None";
 		default:
