@@ -473,7 +473,7 @@ private:
 
 		// Diagnostics
 		{
-			auto* diagnosticsItem = new EntityDiagnosticsTreeWidgetItem(_controlledEntityID, controlledEntity->getDiagnostics(), q);
+			auto* diagnosticsItem = new EntityDiagnosticsTreeWidgetItem(_controlledEntityID, controlledEntity->getDiagnostics(), controlledEntity->getCompatibilityChangedEvents(), q);
 			diagnosticsItem->setText(0, "Diagnostics");
 		}
 	}

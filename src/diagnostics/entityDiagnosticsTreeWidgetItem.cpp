@@ -18,19 +18,32 @@
 */
 
 #include "entityDiagnosticsTreeWidgetItem.hpp"
+#include "compatibilityChangeEventsDialog.hpp"
 
 #include <QtMate/material/color.hpp>
+#include <hive/modelsLibrary/helper.hpp>
 
 #include <map>
 #include <QMenu>
+#include <QMessageBox>
 
-EntityDiagnosticsTreeWidgetItem::EntityDiagnosticsTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::Diagnostics const& diagnostics, QTreeWidget* parent)
+EntityDiagnosticsTreeWidgetItem::EntityDiagnosticsTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::Diagnostics const& diagnostics, la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& compatibilityChangedEvents, QTreeWidget* parent)
 	: QTreeWidgetItem(parent)
 	, _entityID(entityID)
 {
 	// Create fields
 	_redundancyWarning = new QTreeWidgetItem(this);
 	_redundancyWarning->setText(0, "Milan Redundancy Warning");
+	auto* compatibilityChangeEvents = new QTreeWidgetItem(this);
+	compatibilityChangeEvents->setText(0, "Compatibility Change Events");
+	_compatibilityLogButton = new QPushButton("Show Events");
+	connect(_compatibilityLogButton, &QPushButton::clicked, this, &EntityDiagnosticsTreeWidgetItem::showCompatibilityChangeEvents);
+	parent->setItemWidget(compatibilityChangeEvents, 1, _compatibilityLogButton);
+	// Disable the button if there are no events
+	if (compatibilityChangedEvents.empty())
+	{
+		_compatibilityLogButton->setEnabled(false);
+	}
 
 	// Update diagnostics right now
 	auto& manager = hive::modelsLibrary::ControllerManager::getInstance();
@@ -43,6 +56,17 @@ EntityDiagnosticsTreeWidgetItem::EntityDiagnosticsTreeWidgetItem(la::avdecc::Uni
 			if (entityID == _entityID)
 			{
 				updateDiagnostics(diagnostics);
+			}
+		});
+
+	// Listen for compatibilityChangedEvents
+	connect(&manager, &hive::modelsLibrary::ControllerManager::compatibilityChanged, this,
+		[this](la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::CompatibilityFlags const /*flags*/, la::avdecc::entity::model::MilanVersion const& /*milanVersion*/)
+		{
+			if (entityID == _entityID)
+			{
+				// When this event is triggered, we now an event has occurred, so we can enable the button
+				_compatibilityLogButton->setEnabled(true);
 			}
 		});
 }
@@ -64,5 +88,29 @@ void EntityDiagnosticsTreeWidgetItem::updateDiagnostics(la::avdecc::controller::
 		_redundancyWarning->setForeground(0, color);
 		_redundancyWarning->setForeground(1, color);
 		_redundancyWarning->setText(1, text);
+	}
+}
+
+void EntityDiagnosticsTreeWidgetItem::showCompatibilityChangeEvents()
+{
+	auto& manager = hive::modelsLibrary::ControllerManager::getInstance();
+	auto controlledEntity = manager.getControlledEntity(_entityID);
+	if (controlledEntity)
+	{
+		// Show compatibility change events
+		auto compatibilityChangedEvents = controlledEntity->getCompatibilityChangedEvents();
+		if (compatibilityChangedEvents.empty())
+		{
+			QMessageBox::information(nullptr, "No Compatibility Change Events", "There are no compatibility change events for this entity.");
+			return;
+		}
+
+		// Generate dialog title with entity name
+		auto entityName = hive::modelsLibrary::helper::smartEntityName(*controlledEntity);
+		auto title = entityName + " - Compatibility Change Events";
+
+		// Create and show the dialog
+		CompatibilityChangeEventsDialog dialog(title, compatibilityChangedEvents, nullptr);
+		dialog.exec();
 	}
 }

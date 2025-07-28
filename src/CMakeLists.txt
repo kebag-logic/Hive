@@ -33,7 +33,7 @@ if(WIN32)
 	list(APPEND CONFIGURE_IN_FILES
 		${HIVE_RESOURCES_FOLDER}/win32/Info.rc.in
 	)
-	
+
 	find_package(BugTrap REQUIRED)
 	set(BUGREPORTER_LINK_LIBRARIES "BugTrap")
 elseif(APPLE)
@@ -87,6 +87,7 @@ set(HEADER_FILES_COMMON
 	counters/streamInputCountersTreeWidgetItem.hpp
 	counters/streamOutputCountersTreeWidgetItem.hpp
 	discoveredEntities/view.hpp
+	diagnostics/compatibilityChangeEventsDialog.hpp
 	diagnostics/controlDiagnosticsTreeWidgetItem.hpp
 	diagnostics/entityDiagnosticsTreeWidgetItem.hpp
 	diagnostics/streamInputDiagnosticsTreeWidgetItem.hpp
@@ -178,6 +179,7 @@ set(SOURCE_FILES_COMMON
 	counters/streamInputCountersTreeWidgetItem.cpp
 	counters/streamOutputCountersTreeWidgetItem.cpp
 	discoveredEntities/view.cpp
+	diagnostics/compatibilityChangeEventsDialog.cpp
 	diagnostics/controlDiagnosticsTreeWidgetItem.cpp
 	diagnostics/entityDiagnosticsTreeWidgetItem.cpp
 	diagnostics/streamInputDiagnosticsTreeWidgetItem.cpp
