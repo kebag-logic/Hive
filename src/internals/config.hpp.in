@@ -47,6 +47,7 @@ QString const legalCopyright = "@CU_PROJECT_LEGALCOPYRIGHT@";
 QString const readableCopyright = "@CU_PROJECT_READABLE_COPYRIGHT@";
 QString const buildArchitecture = "@CU_TARGET_ARCH@";
 QString const buildNumber = "@CU_BUILD_NUMBER@";
+QString const systemName = "@CMAKE_SYSTEM_NAME@"; // System name (e.g. "Linux", "Windows", "Darwin")
 #ifdef DEBUG
 QString const buildConfiguration = "Debug";
 #else // !DEBUG
