@@ -1,9 +1,9 @@
 # Default values for gen_cmake and gen_install
 
 # Qt defaults
-default_qt_version="6.5.2"
+default_qt_version="6.8.3"
 default_qt_win_basePath="C:/Qt"
-default_qt_win_arch="msvc2019"
+default_qt_win_arch="msvc2022"
 default_qt_mac_basePath="/Applications/Qt"
 default_qt_mac_arch="clang_64"
 default_qt_linux_basePath="/usr/lib"
@@ -15,7 +15,7 @@ function extend_gc_fnc_defaults()
 	default_VisualGenerator="Visual Studio 17 2022"
 	default_VisualToolset="v143"
 	default_VisualToolchain="x64"
-	default_VisualArch="x64"
+	default_buildArch="x64"
   default_keyDigits=2
   default_betaTagName="-beta"
 }
@@ -26,7 +26,11 @@ function extend_gi_fnc_defaults()
   default_VisualGenerator="Visual Studio 17 2022"
   default_VisualToolset="v143"
   default_VisualToolchain="x64"
-  default_VisualArch="x64"
+	if isMac; then
+		default_buildArch="x64 arm64"
+	else
+		default_buildArch="x64"
+	fi
   default_keyDigits=2
   default_betaTagName="-beta"
 }
