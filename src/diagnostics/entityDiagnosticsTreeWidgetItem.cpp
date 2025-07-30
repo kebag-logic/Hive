@@ -109,8 +109,12 @@ void EntityDiagnosticsTreeWidgetItem::showCompatibilityChangeEvents()
 		auto entityName = hive::modelsLibrary::helper::smartEntityName(*controlledEntity);
 		auto title = entityName + " - Compatibility Change Events";
 
+		// Release the controlled entity before starting a long operation (menu.exec)
+		controlledEntity.reset();
+
 		// Create and show the dialog
-		CompatibilityChangeEventsDialog dialog(title, compatibilityChangedEvents, nullptr);
-		dialog.exec();
+		auto dialog = new CompatibilityChangeEventsDialog{ title, compatibilityChangedEvents, nullptr };
+		dialog->setAttribute(Qt::WA_DeleteOnClose);
+		dialog->show(); // We want the dialog to be modal, so we use show() instead of exec()
 	}
 }

@@ -43,8 +43,8 @@ public:
 	};
 
 	explicit CompatibilityChangeEventsTableModel(la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& events, QObject* parent = nullptr)
-		: QAbstractTableModel(parent)
-		, _events(events)
+		: QAbstractTableModel{ parent }
+		, _events{ events }
 	{
 	}
 
@@ -172,17 +172,17 @@ private:
 		return result;
 	}
 
-	la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& _events;
+	la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents _events{};
 };
 
 class CompatibilityChangeEventsDialog::CompatibilityChangeEventsDialogImpl : public QWidget
 {
 public:
 	CompatibilityChangeEventsDialogImpl(QString const& title, la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& events, CompatibilityChangeEventsDialog* parent)
-		: _parent(parent)
-		, _tableModel(new CompatibilityChangeEventsTableModel(events, this))
-		, _tableView(new QTableView(this))
-		, _closeButton(new QPushButton("Close", this))
+		: _parent{ parent }
+		, _tableModel{ new CompatibilityChangeEventsTableModel(events, this) }
+		, _tableView{ new QTableView(this) }
+		, _closeButton{ new QPushButton("Close", this) }
 	{
 		setupUI(title);
 	}
@@ -225,7 +225,7 @@ private:
 };
 
 CompatibilityChangeEventsDialog::CompatibilityChangeEventsDialog(QString const& title, la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& events, QWidget* parent)
-	: QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint)
+	: QDialog{ parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint }
 {
 	_pImpl = new CompatibilityChangeEventsDialogImpl(title, events, this);
 }
