@@ -35,6 +35,7 @@ static constexpr auto ViewSettingsCurrentVersion = 5;
 static SettingsManager::SettingDefault LastLaunchedVersion = { "LastLaunchedVersion", "" };
 static SettingsManager::SettingDefault UserProfile = { "userProfile", la::avdecc::utils::to_integral(profiles::ProfileType::None) };
 static SettingsManager::SettingDefault LastCheckTime = { "LastCheckTime", QVariant::fromValue(std::uint64_t{ 0u }) };
+static SettingsManager::SettingDefault Appearance = { "Appearance", la::avdecc::utils::to_integral(Qt::ColorScheme::Unknown) };
 
 // General settings
 static SettingsManager::SettingDefault General_AutomaticPNGDownloadEnabled = { "avdecc/general/enableAutomaticPNGDownload", false };

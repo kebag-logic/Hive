@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Possibility to set the application appearance (light, dark, system) from the View menu
 - Support for both 1722.1 and Milan 1.2 Stream Output Counters
 - Support for Presentation Time Offset configuration in Stream Output descriptor
 - Device compatibility reporting
