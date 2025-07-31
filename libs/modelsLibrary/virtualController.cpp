@@ -730,6 +730,12 @@ void VirtualController::unbindStream(la::avdecc::UniqueIdentifier const targetEn
 	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, streamIndex);
 }
 
+void VirtualController::getStreamInputInfoEx(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	static auto const s_emptyStreamInputInfo = la::avdecc::entity::model::StreamInputInfoEx{};
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, streamIndex, s_emptyStreamInputInfo);
+}
+
 void VirtualController::connectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	la::avdecc::utils::invokeProtectedHandler(handler, this, talkerStream, listenerStream, std::uint16_t{ 1u }, la::avdecc::entity::ConnectionFlags{}, la::avdecc::entity::LocalEntity::ControlStatus::Success);
