@@ -36,6 +36,10 @@
 #	include <QDir>
 #endif
 
+#if defined(Q_OS_WIN32)
+#include <Windows.h>
+#endif
+
 #include "avdecc/helper.hpp"
 #include "avdecc/hiveLogItems.hpp"
 #include "avdecc/channelConnectionManager.hpp"
