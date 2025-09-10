@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added Milan 1.3 support:
   - System Unique ID extended and System Name
   - Bind/Unbind Milan mechanism
+  - Signal Presence indicators in StreamOutput descriptor
 
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)

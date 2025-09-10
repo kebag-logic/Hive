@@ -650,7 +650,7 @@ private:
 		// Counters (if supported by the entity)
 		if (_isActiveConfiguration && node.descriptorType == la::avdecc::entity::model::DescriptorType::StreamOutput && node.dynamicModel.counters && !node.dynamicModel.counters->empty())
 		{
-			new StreamOutputCountersTreeWidgetItem(_controlledEntityID, node.descriptorIndex, *node.dynamicModel.counters, q);
+			new StreamOutputCountersTreeWidgetItem(_controlledEntityID, node.descriptorIndex, *node.dynamicModel.counters, node.dynamicModel.signalPresence, q);
 			// Do not set the name, it is already set in the constructor
 		}
 	}

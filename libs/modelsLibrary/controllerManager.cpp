@@ -410,6 +410,7 @@ public:
 		qRegisterMetaType<la::avdecc::entity::model::StreamInputCounters>("la::avdecc::entity::model::StreamInputCounters");
 		qRegisterMetaType<la::avdecc::entity::model::StreamOutputCounters>("la::avdecc::entity::model::StreamOutputCounters");
 		qRegisterMetaType<la::avdecc::entity::model::MediaClockReferenceInfo>("la::avdecc::entity::model::MediaClockReferenceInfo");
+		qRegisterMetaType<la::avdecc::entity::model::SignalPresenceChannels>("la::avdecc::entity::model::SignalPresenceChannels");
 		qRegisterMetaType<la::avdecc::controller::Controller::QueryCommandError>("la::avdecc::controller::Controller::QueryCommandError");
 		qRegisterMetaType<la::avdecc::controller::ControlledEntity::InterfaceLinkStatus>("la::avdecc::controller::ControlledEntity::InterfaceLinkStatus");
 		qRegisterMetaType<la::avdecc::controller::ControlledEntity::CompatibilityFlags>("la::avdecc::controller::ControlledEntity::CompatibilityFlags");
@@ -758,6 +759,10 @@ private:
 	virtual void onStreamOutputCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters) noexcept override
 	{
 		emit streamOutputCountersChanged(entity->getEntity().getEntityID(), streamIndex, counters);
+	}
+	virtual void onStreamOutputSignalPresenceChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::SignalPresenceChannels const& signalPresence) noexcept override
+	{
+		emit streamOutputSignalPresenceChanged(entity->getEntity().getEntityID(), streamIndex, signalPresence);
 	}
 	virtual void onMemoryObjectLengthChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept override
 	{
