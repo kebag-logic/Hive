@@ -111,7 +111,7 @@ StreamDynamicTreeWidgetItem::StreamDynamicTreeWidgetItem(la::avdecc::UniqueIdent
 		_hasSavedState = createField("Saved State");
 		_doesSupportEncrypted = createField("Supports Encrypted");
 		_arePdusEncrypted = createField("Encrypted PDUs");
-		_hasTalkerFailed = createField("Talker Failed");
+		_hasSrpRegistrationFailed = createField("Srp Registration Failed");
 		_streamFlags = createField("Last Flags Received");
 		_streamDestMac = createField("Stream Dest Address");
 		_streamID = createField("Stream ID");
@@ -303,7 +303,7 @@ void StreamDynamicTreeWidgetItem::updateStreamDynamicInfo(la::avdecc::entity::mo
 	setBoolValue(_hasSavedState, streamDynamicInfo.hasSavedState);
 	setBoolValue(_doesSupportEncrypted, streamDynamicInfo.doesSupportEncrypted);
 	setBoolValue(_arePdusEncrypted, streamDynamicInfo.arePdusEncrypted);
-	setBoolValue(_hasTalkerFailed, streamDynamicInfo.hasTalkerFailed);
+	setBoolValue(_hasSrpRegistrationFailed, streamDynamicInfo.hasSrpRegistrationFailed);
 	auto const color = qtMate::material::color::foregroundColor();
 	_streamFlags->setForeground(0, color);
 	_streamFlags->setForeground(1, color);
