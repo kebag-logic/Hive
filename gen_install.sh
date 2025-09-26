@@ -158,7 +158,7 @@ if [ $do_appcast -eq 1 ]; then
 	"${selfFolderPath}3rdparty/sparkleHelper/scripts/generate_appcast.sh" "${deliverablesFolder}${appcastInstallerName}" "${releaseVersion}${beta_tag}" "${internalVersion}" "resources/dsa_priv.pem" "${changelogScriptURL}?fileURL=${updateBaseURL}CHANGELOG.md&amp;lastKnownVersion=next" "${updateBaseURL}${installerSubUrl}/${appcastInstallerName}" "/S /NOPCAP /LAUNCH"
 
 	# Move appcast file to deliverablesFolder
-	mv "appcastItem-${releaseVersion}${beta_tag}.xml" "${deliverablesFolder}"
+	mv "appcastItem-*-${releaseVersion}${beta_tag}.xml" "${deliverablesFolder}"
 
 	# Copy CHANGELOG.MD to deliverablesFolder
 	cp "${selfFolderPath}CHANGELOG.md" "${deliverablesFolder}"
