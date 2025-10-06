@@ -2343,7 +2343,7 @@ public:
 			auto* entity = EntityNode::create(entityID, isMilan, isRegisteredUnsol, areUnsolSupported);
 			entity->setName(hive::modelsLibrary::helper::smartEntityName(controlledEntity));
 
-			auto const fillStreamOutputNode = [&controlledEntity](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamOutputNode, auto const& avbInterfaceNode)
+			auto const fillStreamOutputNode = [&controlledEntity, isMilan](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamOutputNode, auto const& avbInterfaceNode)
 			{
 				node.setName(hive::modelsLibrary::helper::outputStreamName(controlledEntity, streamIndex));
 				node.setStreamFormat(streamOutputNode.dynamicModel.streamFormat);
@@ -2376,8 +2376,45 @@ public:
 								}
 								break;
 							}
-							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
-								[[fallthrough]];
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+							{
+								if (isMilan)
+								{
+									auto const milan13Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+									{
+										if (auto const it = milan13Counters.find(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStart); it != milan13Counters.end())
+										{
+											node.setStreamStartCounter(it->second);
+										}
+									}
+									{
+										if (auto const it = milan13Counters.find(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStop); it != milan13Counters.end())
+										{
+											node.setStreamStopCounter(it->second);
+										}
+									}
+									break;
+								}
+								// No guarantee about counter values for non-Milan devices
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+							{
+								auto const milanSignalPresenceCounters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+								{
+									if (auto const it = milanSignalPresenceCounters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart); it != milanSignalPresenceCounters.end())
+									{
+										node.setStreamStartCounter(it->second);
+									}
+								}
+								{
+									if (auto const it = milanSignalPresenceCounters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop); it != milanSignalPresenceCounters.end())
+									{
+										node.setStreamStopCounter(it->second);
+									}
+								}
+								break;
+							}
 							default:
 								break;
 						}
@@ -3420,8 +3457,62 @@ public:
 								}
 								break;
 							}
-							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
-								[[fallthrough]];
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+							{
+								auto const isMilan = controlledEntity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+								if (isMilan)
+								{
+									auto const milan13Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+									for (auto const [flag, counter] : milan13Counters)
+									{
+										switch (flag)
+										{
+											case la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStart:
+												if (node->setStreamStartCounter(counter))
+												{
+													changed = true;
+												}
+												break;
+											case la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStop:
+												if (node->setStreamStopCounter(counter))
+												{
+													changed = true;
+												}
+												break;
+											default:
+												break;
+										}
+									}
+									break;
+								}
+								// No guarantee about counter values for non-Milan devices
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+							{
+								auto const milanSignalPresenceCounters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+								for (auto const [flag, counter] : milanSignalPresenceCounters)
+								{
+									switch (flag)
+									{
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart:
+											if (node->setStreamStartCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop:
+											if (node->setStreamStopCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										default:
+											break;
+									}
+								}
+								break;
+							}
 							default:
 								break;
 						}

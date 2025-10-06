@@ -298,8 +298,28 @@ void buildStreamMappings(la::avdecc::controller::ControlledEntity const* const c
 							userData.isStreaming = startValue > stopValue;
 							break;
 						}
-						case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021: // No guarantee about counter values
-							[[fallthrough]];
+						case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+						{
+							auto const isMilan = controlledEntity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+							if (isMilan)
+							{
+								auto const milan13Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+								auto const startValue = milan13Counters.at(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStart);
+								auto const stopValue = milan13Counters.at(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStop);
+								userData.isStreaming = startValue > stopValue;
+								break;
+							}
+							// No guarantee about counter values for non-Milan devices
+							break;
+						}
+						case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+						{
+							auto const milanSignalPresenceCounters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+							auto const startValue = milanSignalPresenceCounters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart);
+							auto const stopValue = milanSignalPresenceCounters.at(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop);
+							userData.isStreaming = startValue > stopValue;
+							break;
+						}
 						default:
 							userData.isStreaming = false;
 							break;
