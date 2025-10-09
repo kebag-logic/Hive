@@ -219,13 +219,14 @@ class EntityNode : public Node
 	friend class ModelPrivate;
 
 public:
-	static EntityNode* create(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept;
+	static EntityNode* create(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept;
 
 	// Visitor pattern that is called on every stream node that matches avbInterfaceIndex
 	using AvbInterfaceIndexVisitor = std::function<void(class StreamNode*)>;
 	void accept(la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, AvbInterfaceIndexVisitor const& visitor) const noexcept;
 
 	bool isMilan() const noexcept;
+	la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion() const noexcept;
 	bool isRegisteredUnsol() const noexcept;
 	bool areUnsolSupported() const noexcept;
 	la::avdecc::entity::model::ClusterIndex getStreamPortInputClusterOffset(la::avdecc::entity::model::StreamPortIndex const streamPortIndex) const;
@@ -236,7 +237,7 @@ public:
 	std::unordered_map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::AudioMappings> getOutputAudioMappings() const noexcept;
 
 protected:
-	EntityNode(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept;
+	EntityNode(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept;
 	void setRegisteredUnsol(bool const isRegisteredUnsol) noexcept;
 	void setStreamPortInputClusterOffset(la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::ClusterIndex const clusterOffset) noexcept;
 	void setStreamPortOutputClusterOffset(la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::ClusterIndex const clusterOffset) noexcept;
@@ -245,6 +246,7 @@ protected:
 
 protected:
 	bool _isMilan{ false };
+	la::avdecc::entity::model::MilanVersion _milanCompatibleVersion{};
 	bool _isRegisteredUnsol{ false };
 	bool _areUnsolSupported{ false };
 	std::unordered_map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::ClusterIndex> _streamPortInputClusterOffset{};

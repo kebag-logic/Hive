@@ -225,9 +225,9 @@ OfflineOutputStreamNode::OfflineOutputStreamNode() noexcept
 /* ************************************************************ */
 /* EntityNode                                                   */
 /* ************************************************************ */
-EntityNode* EntityNode::create(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept
+EntityNode* EntityNode::create(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept
 {
-	return new EntityNode{ entityID, isMilan, isRegisteredUnsol, areUnsolSupported };
+	return new EntityNode{ entityID, isMilan, milanCompatibleVersion, isRegisteredUnsol, areUnsolSupported };
 }
 
 void EntityNode::accept(la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, AvbInterfaceIndexVisitor const& visitor) const noexcept
@@ -246,9 +246,10 @@ void EntityNode::accept(la::avdecc::entity::model::AvbInterfaceIndex const avbIn
 		});
 }
 
-EntityNode::EntityNode(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept
+EntityNode::EntityNode(la::avdecc::UniqueIdentifier const& entityID, bool const isMilan, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion, bool const isRegisteredUnsol, bool const areUnsolSupported) noexcept
 	: Node{ Type::Entity, entityID, nullptr }
 	, _isMilan{ isMilan }
+	, _milanCompatibleVersion{ milanCompatibleVersion }
 	, _isRegisteredUnsol{ isRegisteredUnsol }
 	, _areUnsolSupported{ areUnsolSupported }
 {
@@ -282,6 +283,11 @@ void EntityNode::setOutputAudioMappings(la::avdecc::entity::model::StreamPortInd
 bool EntityNode::isMilan() const noexcept
 {
 	return _isMilan;
+}
+
+la::avdecc::entity::model::MilanVersion const& EntityNode::milanCompatibleVersion() const noexcept
+{
+	return _milanCompatibleVersion;
 }
 
 bool EntityNode::isRegisteredUnsol() const noexcept

@@ -2338,9 +2338,10 @@ public:
 			auto const configurationIndex = configurationNode.descriptorIndex;
 
 			auto const isMilan = controlledEntity.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+			auto const milanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 			auto const isRegisteredUnsol = controlledEntity.isSubscribedToUnsolicitedNotifications();
 			auto const areUnsolSupported = controlledEntity.areUnsolicitedNotificationsSupported();
-			auto* entity = EntityNode::create(entityID, isMilan, isRegisteredUnsol, areUnsolSupported);
+			auto* entity = EntityNode::create(entityID, isMilan, milanCompatibilityVersion, isRegisteredUnsol, areUnsolSupported);
 			entity->setName(hive::modelsLibrary::helper::smartEntityName(controlledEntity));
 
 			auto const fillStreamOutputNode = [&controlledEntity, isMilan](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamOutputNode, auto const& avbInterfaceNode)
@@ -2530,9 +2531,10 @@ public:
 			auto const configurationIndex = configurationNode.descriptorIndex;
 
 			auto const isMilan = controlledEntity.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+			auto const milanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 			auto const isRegisteredUnsol = controlledEntity.isSubscribedToUnsolicitedNotifications();
 			auto const areUnsolSupported = controlledEntity.areUnsolicitedNotificationsSupported();
-			auto* entity = EntityNode::create(entityID, isMilan, isRegisteredUnsol, areUnsolSupported);
+			auto* entity = EntityNode::create(entityID, isMilan, milanCompatibilityVersion, isRegisteredUnsol, areUnsolSupported);
 			entity->setName(hive::modelsLibrary::helper::smartEntityName(controlledEntity));
 
 			auto const fillStreamInputNode = [&controlledEntity](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamInputNode, auto const& avbInterfaceNode)
