@@ -117,6 +117,7 @@ set(INSTALL_AVDECC_DOC OFF CACHE BOOL "Install documentation." FORCE)
 # Enable features
 set(ENABLE_AVDECC_FEATURE_REDUNDANCY ON CACHE BOOL "Enable 'Network Redundancy' feature as defined by AVnu Alliance." FORCE)
 set(ENABLE_AVDECC_FEATURE_JSON ON CACHE BOOL "Enable read/write files in JSON format." FORCE)
+set(ENABLE_AVDECC_FEATURE_CBR ON CACHE BOOL "Enable ChannelBasedRouting monitoring." FORCE)
 # Compatibility options
 set(ENABLE_AVDECC_USE_FMTLIB ON CACHE BOOL "Use fmtlib" FORCE)
 set(ENABLE_AVDECC_STRICT_2018_REDUNDANCY ON CACHE BOOL "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." FORCE)

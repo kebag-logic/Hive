@@ -168,6 +168,8 @@ LegendDialog::LegendDialog(qtMate::material::color::Name const& colorName, bool 
 		{ "Connected and Media Locked but Talker not detected on the Network (but Online)", Model::IntersectionData::Type::OfflineOutputStream_SingleStream, Model::IntersectionData::State::Connected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::MediaLocked }, true, "" },
 		{ "Connected but MSRP Latency exceeds Presentation Time", Model::IntersectionData::Type::SingleStream_SingleStream, Model::IntersectionData::State::Connected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::LatencyError }, true, "" },
 
+		{ "Channel connection is missing Talker dynamic mappings", Model::IntersectionData::Type::SingleChannel_SingleChannel, Model::IntersectionData::State::NotConnected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::NoTalkerPrimaryMappings, Model::IntersectionData::Flag::NoTalkerSecondaryMappings }, false, "Add talker dynamic mappings" },
+
 		{ "Partially connected Redundant Stream Pair", Model::IntersectionData::Type::Redundant_Redundant, Model::IntersectionData::State::PartiallyConnected, Model::IntersectionData::Flags{}, false, "" },
 	};
 

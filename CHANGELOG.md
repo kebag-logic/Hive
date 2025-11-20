@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Bind/Unbind Milan mechanism
   - Signal Presence indicators in StreamOutput descriptor
 
+### Changed
+- Using AVDECC Library internal Channel Connection Manager for channel based routing
+
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)
 - Incorrect AEM checksum values on some platforms

@@ -378,7 +378,7 @@ void View::onIntersectionClicked(QModelIndex const& index)
 
 				// establish all connections in this row
 				// gather all connections to be made:
-				auto const& talkerChannelIdentification = talkerChannelNode->channelIdentification();
+				auto const& talkerChannelIdentification = talkerChannelNode->channelIdentification_old();
 
 				auto const talkerID = intersectionData.talker->entityID();
 				auto const listenerID = intersectionData.listener->entityID();
@@ -428,8 +428,8 @@ void View::onIntersectionClicked(QModelIndex const& index)
 		{
 			auto const talkerID = intersectionData.talker->entityID();
 			auto const listenerID = intersectionData.listener->entityID();
-			auto const talkerChannelIdentification = static_cast<ChannelNode*>(intersectionData.talker)->channelIdentification();
-			auto const listenerChannelIdentification = static_cast<ChannelNode*>(intersectionData.listener)->channelIdentification();
+			auto const talkerChannelIdentification = static_cast<ChannelNode*>(intersectionData.talker)->channelIdentification_old();
+			auto const listenerChannelIdentification = static_cast<ChannelNode*>(intersectionData.listener)->channelIdentification_old();
 
 			if (intersectionData.state != Model::IntersectionData::State::NotConnected)
 			{

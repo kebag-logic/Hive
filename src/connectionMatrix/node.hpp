@@ -353,20 +353,31 @@ class ChannelNode : public Node
 	friend class ModelPrivate;
 
 public:
-	static ChannelNode* createOutputNode(EntityNode& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept;
-	static ChannelNode* createInputNode(EntityNode& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept;
+	static ChannelNode* createOutputNode(EntityNode& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old) noexcept;
+	static ChannelNode* createInputNode(EntityNode& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old, la::avdecc::controller::model::ChannelIdentification const& channelIdentification) noexcept;
 
 	// Static entity model data
-	avdecc::ChannelIdentification const& channelIdentification() const noexcept;
+	la::avdecc::controller::model::ClusterIdentification const& clusterIdentification() const noexcept;
+	avdecc::ChannelIdentification const& channelIdentification_old() const noexcept;
 
-	la::avdecc::entity::model::ClusterIndex clusterIndex() const noexcept;
-	std::uint16_t channelIndex() const noexcept;
+	// Cached data from the controller
+	la::avdecc::controller::model::ChannelIdentification const& channelIdentification() const noexcept; // ChannelInput only
+	bool hasPrimaryMapping() const noexcept; // If the channel has a primary mapping to a stream (Input and Output)
+	bool hasSecondaryMapping() const noexcept; // If the channel has a secondary mapping to a stream (Input and Output)
 
 protected:
-	ChannelNode(Type const type, Node& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept;
+	ChannelNode(Type const type, Node& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old, la::avdecc::controller::model::ChannelIdentification const& channelIdentification = la::avdecc::controller::model::ChannelIdentification{}) noexcept;
+	void setChannelIdentification(la::avdecc::controller::model::ChannelIdentification const& channelIdentification) noexcept;
+	void setHasPrimaryMapping(bool const hasPrimaryMapping) noexcept;
+	void setHasSecondaryMapping(bool const hasSecondaryMapping) noexcept;
 
 protected:
-	avdecc::ChannelIdentification const _channelIdentification;
+	la::avdecc::controller::model::ClusterIdentification _clusterIdentification{};
+	avdecc::ChannelIdentification const _channelIdentification_old;
+	la::avdecc::controller::model::ChannelIdentification _channelIdentification{}; // ChannelInput only
+
+	bool _hasPrimaryMapping{ false };
+	bool _hasSecondaryMapping{ false };
 };
 
 } // namespace connectionMatrix

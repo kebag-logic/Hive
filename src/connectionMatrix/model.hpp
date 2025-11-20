@@ -129,6 +129,8 @@ public:
 			WrongFormatType = 1u << 4, /**< The Stream format do not match (connection is possible, but the audio won't be decoded by the listener), and will never match because of type incompatibility (eg. CRF and Audio) (Milan devices only) */
 			MediaLocked = 1u << 5, /**< The Stream is Connected and Media Locked (Milan only) */
 			LatencyError = 1u << 6, /**< The Listener MSRP latency is greater than the Talker's */
+			NoTalkerPrimaryMappings = 1u << 7, /**< The Talker has no primary (or single) mappings (ChannelNode only) */
+			NoTalkerSecondaryMappings = 1u << 8, /**< The Talker has no secondary mappings (ChannelNode only) */
 		};
 		using Flags = la::avdecc::utils::EnumBitfield<Flag>;
 
