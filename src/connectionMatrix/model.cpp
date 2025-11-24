@@ -3027,7 +3027,7 @@ public:
 		}
 	}
 
-	void handleUnsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed)
+	void handleUnsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed, bool const /*triggeredByEntity*/)
 	{
 		if (auto* node = talkerNodeFromEntityID(entityID))
 		{

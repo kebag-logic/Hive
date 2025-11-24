@@ -516,9 +516,9 @@ private:
 		emit gptpChanged(e.getEntityID(), avbInterfaceIndex, grandMasterID, grandMasterDomain);
 	}
 	// Global entity notifications
-	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, bool const isSubscribed) noexcept override
+	virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, bool const isSubscribed, bool const triggeredByEntity) noexcept override
 	{
-		emit unsolicitedRegistrationChanged(entity->getEntity().getEntityID(), isSubscribed);
+		emit unsolicitedRegistrationChanged(entity->getEntity().getEntityID(), isSubscribed, triggeredByEntity);
 	}
 	virtual void onCompatibilityChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion) noexcept override
 	{

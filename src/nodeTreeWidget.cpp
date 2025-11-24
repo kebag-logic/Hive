@@ -416,8 +416,8 @@ private:
 			}
 
 			{
-				auto* const subscribedLabel = addChangingTextItem(dynamicItem, "Subcsribed to Unsol");
-				auto const updateSubscribedLabel = [this, subscribedLabel](la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed)
+				auto* const subscribedLabel = addChangingTextItem(dynamicItem, "Subscribed to Unsol");
+				auto const updateSubscribedLabel = [this, subscribedLabel](la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed, bool const /*triggeredByEntity*/)
 				{
 					if (entityID == _controlledEntityID)
 					{
@@ -426,7 +426,7 @@ private:
 				};
 
 				// Update text now
-				updateSubscribedLabel(_controlledEntityID, entity.isSubscribedToUnsolicitedNotifications());
+				updateSubscribedLabel(_controlledEntityID, entity.isSubscribedToUnsolicitedNotifications(), false);
 
 				// Listen for changes
 				connect(&controllerManager, &hive::modelsLibrary::ControllerManager::unsolicitedRegistrationChanged, subscribedLabel, updateSubscribedLabel);
