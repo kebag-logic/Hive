@@ -392,6 +392,7 @@ public:
 	/* Connection changed signals */
 	Q_SIGNAL void streamInputConnectionChanged(la::avdecc::entity::model::StreamIdentification const& stream, la::avdecc::entity::model::StreamInputConnectionInfo const& info);
 	Q_SIGNAL void streamOutputConnectionsChanged(la::avdecc::entity::model::StreamIdentification const& stream, la::avdecc::entity::model::StreamConnections const& connections);
+	Q_SIGNAL void channelInputConnectionChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification);
 
 	/* Entity commands signals */
 	Q_SIGNAL void beginAecpCommand(la::avdecc::UniqueIdentifier const entityID, hive::modelsLibrary::ControllerManager::AecpCommandType const commandType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);

@@ -417,6 +417,9 @@ public:
 		qRegisterMetaType<la::avdecc::controller::ControlledEntity::Diagnostics>("la::avdecc::controller::ControlledEntity::Diagnostics");
 		qRegisterMetaType<la::avdecc::controller::model::AcquireState>("la::avdecc::controller::model::AcquireState");
 		qRegisterMetaType<la::avdecc::controller::model::LockState>("la::avdecc::controller::model::LockState");
+		qRegisterMetaType<la::avdecc::controller::model::MediaClockChain>("la::avdecc::controller::model::MediaClockChain");
+		qRegisterMetaType<la::avdecc::controller::model::ClusterIdentification>("la::avdecc::controller::model::ClusterIdentification");
+		qRegisterMetaType<la::avdecc::controller::model::ChannelIdentification>("la::avdecc::controller::model::ChannelIdentification");
 	}
 
 	~ControllerManagerImpl() noexcept
@@ -537,6 +540,10 @@ private:
 	virtual void onStreamOutputConnectionsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamConnections const& connections) noexcept override
 	{
 		emit streamOutputConnectionsChanged({ entity->getEntity().getEntityID(), streamIndex }, connections);
+	}
+	virtual void onChannelInputConnectionChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification) noexcept override
+	{
+		emit channelInputConnectionChanged(entity->getEntity().getEntityID(), clusterIdentification, channeIdentification);
 	}
 	// Entity model notifications (unsolicited AECP or changes this controller sent)
 	virtual void onAcquireStateChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::AcquireState const acquireState, la::avdecc::UniqueIdentifier const owningEntity) noexcept override

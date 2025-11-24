@@ -602,35 +602,62 @@ void StreamNode::computeIsStreaming() noexcept
 /* ************************************************************ */
 /* ChannelNode                                                  */
 /* ************************************************************ */
-ChannelNode* ChannelNode::createOutputNode(EntityNode& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept
+ChannelNode* ChannelNode::createOutputNode(EntityNode& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old) noexcept
 {
-	return new ChannelNode{ Type::OutputChannel, parent, channelIdentification };
+	return new ChannelNode{ Type::OutputChannel, parent, clusterIdentification, channelIdentification_old };
 }
 
-ChannelNode* ChannelNode::createInputNode(EntityNode& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept
+ChannelNode* ChannelNode::createInputNode(EntityNode& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old, la::avdecc::controller::model::ChannelIdentification const& channelIdentification) noexcept
 {
-	return new ChannelNode{ Type::InputChannel, parent, channelIdentification };
+	return new ChannelNode{ Type::InputChannel, parent, clusterIdentification, channelIdentification_old, channelIdentification };
 }
 
-avdecc::ChannelIdentification const& ChannelNode::channelIdentification() const noexcept
+avdecc::ChannelIdentification const& ChannelNode::channelIdentification_old() const noexcept
+{
+	return _channelIdentification_old;
+}
+
+la::avdecc::controller::model::ClusterIdentification const& ChannelNode::clusterIdentification() const noexcept
+{
+	return _clusterIdentification;
+}
+
+la::avdecc::controller::model::ChannelIdentification const& ChannelNode::channelIdentification() const noexcept
 {
 	return _channelIdentification;
 }
 
-la::avdecc::entity::model::ClusterIndex ChannelNode::clusterIndex() const noexcept
+bool ChannelNode::hasPrimaryMapping() const noexcept
 {
-	return _channelIdentification.clusterIndex;
+	return _hasPrimaryMapping;
 }
 
-std::uint16_t ChannelNode::channelIndex() const noexcept
+bool ChannelNode::hasSecondaryMapping() const noexcept
 {
-	return _channelIdentification.clusterChannel;
+	return _hasSecondaryMapping;
 }
 
-ChannelNode::ChannelNode(Type const type, Node& parent, avdecc::ChannelIdentification const& channelIdentification) noexcept
+ChannelNode::ChannelNode(Type const type, Node& parent, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, avdecc::ChannelIdentification const& channelIdentification_old, la::avdecc::controller::model::ChannelIdentification const& channelIdentification) noexcept
 	: Node{ type, parent.entityID(), &parent }
+	, _clusterIdentification{ clusterIdentification }
+	, _channelIdentification_old{ channelIdentification_old }
 	, _channelIdentification{ channelIdentification }
 {
+}
+
+void ChannelNode::setChannelIdentification(la::avdecc::controller::model::ChannelIdentification const& channelIdentification) noexcept
+{
+	_channelIdentification = channelIdentification;
+}
+
+void ChannelNode::setHasPrimaryMapping(bool const hasMapping) noexcept
+{
+	_hasPrimaryMapping = hasMapping;
+}
+
+void ChannelNode::setHasSecondaryMapping(bool const hasMapping) noexcept
+{
+	_hasSecondaryMapping = hasMapping;
 }
 
 /* ************************************************************ */

@@ -141,6 +141,7 @@ static inline QColor getConnectionBrushColor(Model::IntersectionData::State cons
 	static auto const Blue = color::value(color::Name::Blue, color::Shade::Shade500);
 	static auto const Purple = color::value(color::Name::Purple, color::Shade::Shade400);
 	static auto const Grey = color::value(color::Name::Gray, color::Shade::Shade600);
+	static auto const Lime = color::value(color::Name::Lime, color::Shade::Shade500);
 	//static auto const Cyan = color::value(color::Name::Cyan, color::Shade::Shade400);
 	//static auto const Orange = color::value(color::Name::Orange, color::Shade::Shade600);
 
@@ -151,6 +152,8 @@ static inline QColor getConnectionBrushColor(Model::IntersectionData::State cons
 	auto const wrongDomain = flags.test(Model::IntersectionData::Flag::WrongDomain);
 	auto const wrongFormatPossible = flags.test(Model::IntersectionData::Flag::WrongFormatPossible);
 	auto const wrongFormatImpossible = flags.test(Model::IntersectionData::Flag::WrongFormatImpossible);
+
+	auto alphaValue = connected ? 1.0 : 0.25;
 
 	if (interfaceDown)
 	{
@@ -181,7 +184,12 @@ static inline QColor getConnectionBrushColor(Model::IntersectionData::State cons
 	}
 	else
 	{
-		if (state == Model::IntersectionData::State::PartiallyConnected)
+		if (flags.test(Model::IntersectionData::Flag::NoTalkerPrimaryMappings) || flags.test(Model::IntersectionData::Flag::NoTalkerSecondaryMappings))
+		{
+			brushColor = Lime;
+			alphaValue = 1.0;
+		}
+		else if (state == Model::IntersectionData::State::PartiallyConnected)
 		{
 			brushColor = Purple;
 		}
@@ -191,7 +199,7 @@ static inline QColor getConnectionBrushColor(Model::IntersectionData::State cons
 		}
 	}
 
-	brushColor.setAlphaF(connected ? 1.0 : 0.25);
+	brushColor.setAlphaF(alphaValue);
 
 	return brushColor;
 }
@@ -294,8 +302,9 @@ void drawCapabilities(QPainter* painter, QRect const& rect, Model::IntersectionD
 	painter->setRenderHint(QPainter::Antialiasing);
 
 	auto const connected = state != Model::IntersectionData::State::NotConnected;
+	auto const connectedButNoTalkerMappings = flags.test(Model::IntersectionData::Flag::NoTalkerPrimaryMappings) || flags.test(Model::IntersectionData::Flag::NoTalkerSecondaryMappings);
 
-	auto penColor = color::value(color::Name::Gray, connected ? color::Shade::Shade900 : color::Shade::Shade500);
+	auto penColor = color::value(color::Name::Gray, (connected || connectedButNoTalkerMappings) ? color::Shade::Shade900 : color::Shade::Shade500);
 	auto penWidth = qreal{ 1.5 };
 	auto wrongFormatHasPriorityOverInterfaceDown = false;
 
