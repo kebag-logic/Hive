@@ -37,7 +37,7 @@
 class StreamOutputCountersTreeWidgetItem : public QObject, public QTreeWidgetItem
 {
 public:
-	StreamOutputCountersTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters, QTreeWidget* parent = nullptr);
+	StreamOutputCountersTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters, std::optional<la::avdecc::entity::model::SignalPresenceChannels> const signalPresence, QTreeWidget* parent = nullptr);
 
 private:
 	template<typename CountersType>
@@ -45,10 +45,12 @@ private:
 	template<typename CountersType>
 	void updateCounters(CountersType const& counters);
 	void updateCounters(la::avdecc::entity::model::StreamOutputCounters const& counters);
+	void updateSignalPresence(la::avdecc::entity::model::SignalPresenceChannels const& signalPresence);
 
 	la::avdecc::UniqueIdentifier const _entityID{};
 	la::avdecc::entity::model::StreamIndex const _streamIndex{ 0u };
 
 	// Counters
 	std::map<la::avdecc::entity::model::DescriptorCounterValidFlag, QTreeWidgetItem*> _counters{};
+	QTreeWidgetItem* _signalPresenceWidget{ nullptr };
 };

@@ -60,7 +60,7 @@ void StreamOutputCountersTreeWidgetItem::updateCounters(CountersType const& coun
 	}
 }
 
-StreamOutputCountersTreeWidgetItem::StreamOutputCountersTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters, QTreeWidget* parent)
+StreamOutputCountersTreeWidgetItem::StreamOutputCountersTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters, std::optional<la::avdecc::entity::model::SignalPresenceChannels> const signalPresence, QTreeWidget* parent)
 	: QTreeWidgetItem(parent)
 	, _entityID(entityID)
 	, _streamIndex(streamIndex)
@@ -90,8 +90,29 @@ StreamOutputCountersTreeWidgetItem::StreamOutputCountersTreeWidgetItem(la::avdec
 		{ la::avdecc::entity::StreamOutputCounterValidFlag17221::EntitySpecific2, "Entity Specific 2" },
 		{ la::avdecc::entity::StreamOutputCounterValidFlag17221::EntitySpecific1, "Entity Specific 1" },
 	};
+	static std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence, QString> s_counterNames_Milan13SignalPresence{
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart, "Stream Start" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop, "Stream Stop" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamInterrupted, "Stream Interrupted" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::MediaReset, "Media Reset" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::TimestampUncertain, "Timestamp Uncertain" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::TimestampValid, "Timestamp Valid" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::TimestampNotValid, "Timestamp Not Valid" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::FramesTx, "Frames TX" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence2, "Signal Presence 2" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::SignalPresence1, "Signal Presence 1" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific8, "Entity Specific 8" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific7, "Entity Specific 7" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific6, "Entity Specific 6" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific5, "Entity Specific 5" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific4, "Entity Specific 4" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific3, "Entity Specific 3" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific2, "Entity Specific 2" },
+		{ la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::EntitySpecific1, "Entity Specific 1" },
+	};
 
 	// Create fields
+	auto supportSignalPresence = false;
 	try
 	{
 		switch (counters.getCounterType())
@@ -102,6 +123,17 @@ StreamOutputCountersTreeWidgetItem::StreamOutputCountersTreeWidgetItem(la::avdec
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 				createCounters(s_counterNames_17221);
 				break;
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+			{
+				// Raw counters
+				createCounters(s_counterNames_Milan13SignalPresence);
+				// Signal Presence
+				_signalPresenceWidget = new QTreeWidgetItem(this);
+				_signalPresenceWidget->setText(0, "Signal Presence");
+				// We need to care about Signal Presence
+				supportSignalPresence = true;
+				break;
+			}
 			default:
 				AVDECC_ASSERT(false, "Unhandled CounterType");
 				throw std::invalid_argument("Unhandled CounterType");
@@ -125,6 +157,23 @@ StreamOutputCountersTreeWidgetItem::StreamOutputCountersTreeWidgetItem(la::avdec
 				updateCounters(counters);
 			}
 		});
+
+	// Handle SignalPresence
+	if (supportSignalPresence)
+	{
+		// Update right now
+		updateSignalPresence(signalPresence ? *signalPresence : la::avdecc::entity::model::SignalPresenceChannels{});
+
+		// Listen for StreamOutputSignalPresenceChanged
+		connect(&hive::modelsLibrary::ControllerManager::getInstance(), &hive::modelsLibrary::ControllerManager::streamOutputSignalPresenceChanged, this,
+			[this](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::SignalPresenceChannels const& signalPresence)
+			{
+				if (entityID == _entityID && streamIndex == _streamIndex)
+				{
+					updateSignalPresence(signalPresence);
+				}
+			});
+	}
 }
 
 void StreamOutputCountersTreeWidgetItem::updateCounters(la::avdecc::entity::model::StreamOutputCounters const& counters)
@@ -140,6 +189,10 @@ void StreamOutputCountersTreeWidgetItem::updateCounters(la::avdecc::entity::mode
 			case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
 				updateCounters(counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>());
 				this->setText(0, "Counters (1722.1 v2021)");
+				break;
+			case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+				updateCounters(counters.getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>());
+				this->setText(0, "Counters (Milan v1.3 - Signal Presence)");
 				break;
 			default:
 				AVDECC_ASSERT(false, "Unhandled CounterType");
@@ -157,5 +210,27 @@ void StreamOutputCountersTreeWidgetItem::updateCounters(la::avdecc::entity::mode
 			widget->setText(1, QString{ "Unhandled Output Counter Type" });
 			widget->setHidden(false);
 		}
+	}
+}
+
+void StreamOutputCountersTreeWidgetItem::updateSignalPresence(la::avdecc::entity::model::SignalPresenceChannels const& signalPresence)
+{
+	// Process each bit of the signal presence value and convert to either "1" or "0"
+	if (_signalPresenceWidget)
+	{
+		auto str = QString{};
+		str.reserve(signalPresence.size() * 2); // Reserve enough space for the string
+		for (auto bitPos = 0u; bitPos < signalPresence.size(); ++bitPos)
+		{
+			if (signalPresence.test(bitPos))
+			{
+				str.append("1");
+			}
+			else
+			{
+				str.append("0");
+			}
+		}
+		_signalPresenceWidget->setText(1, str);
 	}
 }

@@ -18,11 +18,12 @@
 */
 
 #include "milanDynamicStateTreeWidgetItem.hpp"
-#include "avdecc/numberValidator.hpp"
+#include "avdecc/euiValidator.hpp"
+#include "avdecc/stringValidator.hpp"
+
+#include <hive/modelsLibrary/helper.hpp>
 
 #include <QMenu>
-
-Q_DECLARE_METATYPE(la::avdecc::entity::model::SystemUniqueIdentifier)
 
 MilanDynamicStateTreeWidgetItem::MilanDynamicStateTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::MilanDynamicState const& milanDynamicState, QTreeWidget* parent)
 	: QTreeWidgetItem(parent)
@@ -30,35 +31,45 @@ MilanDynamicStateTreeWidgetItem::MilanDynamicStateTreeWidgetItem(la::avdecc::Uni
 {
 	auto* systemUniqueIDItem = new QTreeWidgetItem(this);
 	systemUniqueIDItem->setText(0, "System Unique ID");
-
-	static_assert(!std::is_same_v<la::avdecc::entity::model::SystemUniqueIdentifier, la::avdecc::UniqueIdentifier>, "Update this code and use avdecc::EUIValidator::getSharedInstance()");
-	_systemUniqueID = new AecpCommandTextEntry("", avdecc::PositiveIntegerValidator<std::numeric_limits<la::avdecc::entity::model::SystemUniqueIdentifier>::max()>::getSharedInstance());
+	_systemUniqueID = new AecpCommandTextEntry("", avdecc::EUIValidator::getSharedInstance());
 	parent->setItemWidget(systemUniqueIDItem, 1, _systemUniqueID);
+
+	auto* systemNameItem = new QTreeWidgetItem(this);
+	systemNameItem->setText(0, "System Name");
+	_systemName = new AecpCommandTextEntry("", avdecc::AvdeccStringValidator::getSharedInstance());
+	parent->setItemWidget(systemNameItem, 1, _systemName);
 
 	// Send changes
 	_systemUniqueID->setDataChangedHandler(
 		[this](QString const& oldText, QString const& newText)
 		{
-			auto const systemUniqueID = static_cast<la::avdecc::entity::model::SystemUniqueIdentifier>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::SystemUniqueIdentifier>(newText.toStdString().c_str()));
-			hive::modelsLibrary::ControllerManager::getInstance().setSystemUniqueID(_entityID, systemUniqueID, _systemUniqueID->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID), _systemUniqueID->getResultHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID, oldText));
+			auto const systemUniqueID = static_cast<la::avdecc::UniqueIdentifier>(la::avdecc::utils::convertFromString<la::avdecc::UniqueIdentifier::value_type>(newText.toStdString().c_str()));
+			auto const systemName = _systemName->getCurrentData();
+			hive::modelsLibrary::ControllerManager::getInstance().setSystemUniqueID(_entityID, systemUniqueID, systemName, _systemUniqueID->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID), _systemUniqueID->getResultHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID, oldText));
+		});
+	_systemName->setDataChangedHandler(
+		[this](QString const& oldText, QString const& newText)
+		{
+			auto const systemUniqueID = static_cast<la::avdecc::UniqueIdentifier>(la::avdecc::utils::convertFromString<la::avdecc::UniqueIdentifier::value_type>(_systemUniqueID->getCurrentData().toStdString().c_str()));
+			hive::modelsLibrary::ControllerManager::getInstance().setSystemUniqueID(_entityID, systemUniqueID, newText, _systemUniqueID->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID), _systemUniqueID->getResultHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID, oldText));
 		});
 
 	// Listen for changes
 	connect(&hive::modelsLibrary::ControllerManager::getInstance(), &hive::modelsLibrary::ControllerManager::systemUniqueIDChanged, _systemUniqueID,
-		[this](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID)
+		[this](la::avdecc::UniqueIdentifier const entityID, la::avdecc::UniqueIdentifier const systemUniqueID, QString const& systemName)
 		{
 			if (entityID == _entityID)
 			{
-				updateSystemUniqueID(systemUniqueID);
+				updateSystemUniqueID(systemUniqueID, systemName);
 			}
 		});
 
 	// Update now
-	updateSystemUniqueID(*milanDynamicState.systemUniqueID);
+	updateSystemUniqueID(milanDynamicState.systemUniqueID ? *milanDynamicState.systemUniqueID : la::avdecc::UniqueIdentifier{}, milanDynamicState.systemName ? QString::fromStdString(*milanDynamicState.systemName) : QString{});
 }
 
-void MilanDynamicStateTreeWidgetItem::updateSystemUniqueID(la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept
+void MilanDynamicStateTreeWidgetItem::updateSystemUniqueID(la::avdecc::UniqueIdentifier const systemUniqueID, QString const& systemName) noexcept
 {
-	static_assert(!std::is_same_v<la::avdecc::entity::model::SystemUniqueIdentifier, la::avdecc::UniqueIdentifier>, "Update this code to handle SystemUniqueIdentifier as a UniqueIdentifier using: hive::modelsLibrary::helper::uniqueIdentifierToString(systemUniqueID)");
-	_systemUniqueID->setCurrentData(QString::number(systemUniqueID));
+	_systemUniqueID->setCurrentData(hive::modelsLibrary::helper::uniqueIdentifierToString(systemUniqueID));
+	_systemName->setCurrentData(systemName);
 }

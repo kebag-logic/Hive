@@ -39,9 +39,10 @@ public:
 	MilanDynamicStateTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::MilanDynamicState const& milanDynamicState, QTreeWidget* parent = nullptr);
 
 private:
-	void updateSystemUniqueID(la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID) noexcept;
+	void updateSystemUniqueID(la::avdecc::UniqueIdentifier const systemUniqueID, QString const& systemName) noexcept;
 
 	la::avdecc::UniqueIdentifier const _entityID{};
 
 	AecpCommandTextEntry* _systemUniqueID{ nullptr };
+	AecpCommandTextEntry* _systemName{ nullptr };
 };

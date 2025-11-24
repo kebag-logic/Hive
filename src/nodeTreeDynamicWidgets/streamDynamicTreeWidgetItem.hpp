@@ -56,7 +56,7 @@ private:
 	QTreeWidgetItem* _hasSavedState{ nullptr };
 	QTreeWidgetItem* _doesSupportEncrypted{ nullptr };
 	QTreeWidgetItem* _arePdusEncrypted{ nullptr };
-	QTreeWidgetItem* _hasTalkerFailed{ nullptr };
+	QTreeWidgetItem* _hasSrpRegistrationFailed{ nullptr };
 	QTreeWidgetItem* _streamDestMac{ nullptr };
 	QTreeWidgetItem* _streamID{ nullptr };
 	QTreeWidgetItem* _streamVlanID{ nullptr };

@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.29)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as a new version begins, update the version number by following SemVer rules.
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(HIVE_VERSION 1.3.2.4)
-set(AEMDUMPER_VERSION 1.3.2.4)
+set(HIVE_VERSION 1.4.0.4)
+set(AEMDUMPER_VERSION 1.4.0.4)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -33,19 +33,15 @@ if(ENABLE_HIVE_FEATURE_SPARKLE)
 	if(NOT APPCAST_RELEASES_URL)
 		set(APPCAST_RELEASES_URL "https://localhost/hive/appcast-release.xml" CACHE STRING "Appcast URL for Hive Releases" FORCE)
 	endif()
-	message(STATUS "Appcast URL for Hive Releases defined to: ${APPCAST_RELEASES_URL}")
 	if(NOT APPCAST_BETAS_URL)
 		set(APPCAST_BETAS_URL "https://localhost/hive/appcast-beta.xml" CACHE STRING "Appcast URL for Hive Betas" FORCE)
 	endif()
-	message(STATUS "Appcast URL for Hive Betas defined to: ${APPCAST_BETAS_URL}")
 	if(NOT APPCAST_RELEASES_FALLBACK_URL)
 		set(APPCAST_RELEASES_FALLBACK_URL "${APPCAST_RELEASES_URL}" CACHE STRING "Appcast Fallback URL for Hive Releases" FORCE)
 	endif()
-	message(STATUS "Appcast fallback URL for Hive Releases defined to: ${APPCAST_RELEASES_FALLBACK_URL}")
 	if(NOT APPCAST_BETAS_FALLBACK_URL)
 		set(APPCAST_BETAS_FALLBACK_URL "${APPCAST_BETAS_URL}" CACHE STRING "Appcast Fallback URL for Hive Betas" FORCE)
 	endif()
-	message(STATUS "Appcast fallback URL for Hive Betas defined to: ${APPCAST_BETAS_FALLBACK_URL}")
 	if(APPLE AND NOT HIVE_DSA_PUB_KEY)
 	message(FATAL_ERROR "DSA Public Key not set in HIVE_DSA_PUB_KEY CMake Variable")
 	endif()
@@ -121,6 +117,7 @@ set(INSTALL_AVDECC_DOC OFF CACHE BOOL "Install documentation." FORCE)
 # Enable features
 set(ENABLE_AVDECC_FEATURE_REDUNDANCY ON CACHE BOOL "Enable 'Network Redundancy' feature as defined by AVnu Alliance." FORCE)
 set(ENABLE_AVDECC_FEATURE_JSON ON CACHE BOOL "Enable read/write files in JSON format." FORCE)
+set(ENABLE_AVDECC_FEATURE_CBR ON CACHE BOOL "Enable ChannelBasedRouting monitoring." FORCE)
 # Compatibility options
 set(ENABLE_AVDECC_USE_FMTLIB ON CACHE BOOL "Use fmtlib" FORCE)
 set(ENABLE_AVDECC_STRICT_2018_REDUNDANCY ON CACHE BOOL "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." FORCE)
@@ -179,6 +176,18 @@ if(FALSE)
 endif()
 if(${ENABLE_CODE_SIGNING})
 	set(SIGN_FLAG "SIGN")
+endif()
+
+# Expand some sparkle variables
+if(ENABLE_HIVE_FEATURE_SPARKLE)
+	string(CONFIGURE "${APPCAST_RELEASES_URL}" APPCAST_RELEASES_URL @ONLY)
+	string(CONFIGURE "${APPCAST_BETAS_URL}" APPCAST_BETAS_URL @ONLY)
+	string(CONFIGURE "${APPCAST_RELEASES_FALLBACK_URL}" APPCAST_RELEASES_FALLBACK_URL @ONLY)
+	string(CONFIGURE "${APPCAST_BETAS_FALLBACK_URL}" APPCAST_BETAS_FALLBACK_URL @ONLY)
+	message(STATUS "Appcast URL for Hive Releases defined to: ${APPCAST_RELEASES_URL}")
+	message(STATUS "Appcast URL for Hive Betas defined to: ${APPCAST_BETAS_URL}")
+	message(STATUS "Appcast URL for Hive Releases defined to: ${APPCAST_RELEASES_FALLBACK_URL}")
+	message(STATUS "Appcast URL for Hive Betas defined to: ${APPCAST_BETAS_FALLBACK_URL}")
 endif()
 
 # Install paramaters

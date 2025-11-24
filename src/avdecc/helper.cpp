@@ -547,11 +547,17 @@ QString flagsToString(la::avdecc::entity::StreamInfoFlags const flags) noexcept
 			case la::avdecc::entity::StreamInfoFlag::EncryptedPdu:
 				concatenateFlags(str, "EncryptedPdu");
 				break;
-			case la::avdecc::entity::StreamInfoFlag::TalkerFailed:
-				concatenateFlags(str, "TalkerFailed");
+			case la::avdecc::entity::StreamInfoFlag::SrpRegistrationFailed:
+				concatenateFlags(str, "SrpRegistrationFailed");
+				break;
+			case la::avdecc::entity::StreamInfoFlag::ClEntriesValid:
+				concatenateFlags(str, "ClEntriesValid");
 				break;
 			case la::avdecc::entity::StreamInfoFlag::NoSrp:
 				concatenateFlags(str, "NoSrp");
+				break;
+			case la::avdecc::entity::StreamInfoFlag::Udp:
+				concatenateFlags(str, "Udp");
 				break;
 			case la::avdecc::entity::StreamInfoFlag::IpFlagsValid:
 				concatenateFlags(str, "IpFlagsValid");
@@ -642,6 +648,12 @@ QString flagsToString(la::avdecc::entity::MilanInfoFeaturesFlags const flags) no
 				break;
 			case la::avdecc::entity::MilanInfoFeaturesFlag::TalkerDynamicMappingsWhileRunning:
 				concatenateFlags(str, "TalkerDynMappingsRunning");
+				break;
+			case la::avdecc::entity::MilanInfoFeaturesFlag::MvuBinding:
+				concatenateFlags(str, "MvuBinding");
+				break;
+			case la::avdecc::entity::MilanInfoFeaturesFlag::TalkerSignalPresence:
+				concatenateFlags(str, "TalkerSignalPresence");
 				break;
 			default:
 				concatenateFlags(str, "Unknown");

@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Device compatibility reporting
   - Warning indicators for devices that have had compatibility change events
   - Compatibility Change Events window (in Entity Descriptor Diagnostics)
+- Added Milan 1.3 support:
+  - System Unique ID extended and System Name
+  - Bind/Unbind Milan mechanism
+  - Signal Presence indicators in StreamOutput descriptor
+
+### Changed
+- Using AVDECC Library internal Channel Connection Manager for channel based routing
 
 ### Fixed
 - [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)
@@ -25,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to refresh a virtual entity
 - Support for SERIAL Protocol Interface (by Luke Howard)
 - Support for LOCAL SOCKET Protocol Interface (by Luke Howard)
-- Added Milan 1.2 values:
+- Added Milan 1.2 support:
   - System Unique ID
   - Media Clock Reference Info (in ClockDomain descriptor)
 - Controlled Entity enumeration status:
