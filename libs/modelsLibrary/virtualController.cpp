@@ -681,15 +681,16 @@ void VirtualController::getMilanInfo(la::avdecc::UniqueIdentifier const targetEn
 	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, s_emptyMilanInfo);
 }
 
-void VirtualController::setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID, SetSystemUniqueIDHandler const& handler) const noexcept
+void VirtualController::setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::UniqueIdentifier const systemUniqueID, la::avdecc::entity::model::AvdeccFixedString const& systemName, SetSystemUniqueIDHandler const& handler) const noexcept
 {
-	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, systemUniqueID);
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, systemUniqueID, systemName);
 }
 
 void VirtualController::getSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, GetSystemUniqueIDHandler const& handler) const noexcept
 {
-	static auto const s_emptySystemUniqueID = la::avdecc::entity::model::SystemUniqueIdentifier{};
-	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, s_emptySystemUniqueID);
+	static auto const s_emptySystemUniqueID = la::avdecc::UniqueIdentifier{};
+	static auto const s_emptySystemName = la::avdecc::entity::model::AvdeccFixedString{};
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, s_emptySystemUniqueID, s_emptySystemName);
 }
 
 void VirtualController::setMediaClockReferenceInfo(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, std::optional<la::avdecc::entity::model::MediaClockReferencePriority> const userPriority, std::optional<la::avdecc::entity::model::AvdeccFixedString> const& domainName, SetMediaClockReferenceInfoHandler const& handler) const noexcept
@@ -717,6 +718,22 @@ void VirtualController::getMediaClockReferenceInfo(la::avdecc::UniqueIdentifier 
 {
 	static auto const s_emptyMediaClockReferenceInfo = la::avdecc::entity::model::MediaClockReferenceInfo{};
 	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, clockDomainIndex, la::avdecc::entity::model::DefaultMediaClockReferencePriority::Default, s_emptyMediaClockReferenceInfo);
+}
+
+void VirtualController::bindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::BindStreamFlags const flags, BindStreamHandler const& handler) const noexcept
+{
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, streamIndex, talkerStream, flags);
+}
+
+void VirtualController::unbindStream(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, UnbindStreamHandler const& handler) const noexcept
+{
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::Success, streamIndex);
+}
+
+void VirtualController::getStreamInputInfoEx(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, GetStreamInputInfoExHandler const& handler) const noexcept
+{
+	static auto const s_emptyStreamInputInfo = la::avdecc::entity::model::StreamInputInfoEx{};
+	la::avdecc::utils::invokeProtectedHandler(handler, this, targetEntityID, la::avdecc::entity::LocalEntity::MvuCommandStatus::NotImplemented, streamIndex, s_emptyStreamInputInfo);
 }
 
 void VirtualController::connectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept

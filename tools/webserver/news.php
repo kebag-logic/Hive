@@ -41,6 +41,12 @@ if(!isset($_GET["buildNumber"]))
 }
 $buildNumber = $_GET["buildNumber"];
 
+$os = "";
+if(isset($_GET["os"]))
+{
+	$os = $_GET["os"];
+}
+
 $fileURL = "news.json";
 if(isset($_GET["fileURL"]))
 {
@@ -65,8 +71,19 @@ foreach ($json_a as $news)
 		// Check if buildNumber is greater or equal to news 'start_version' and less or equal to news 'end_version'
 		if ($buildNumber >= $news["start_version"] && $buildNumber <= $news["end_version"])
 		{
-			// Add news to output buffer
-			$output = addNewsToBuffer($output, $news);
+			// Check OS compatibility: if news has 'os' field, it must match the provided OS parameter,
+			// or if news doesn't have 'os' field, it's compatible with all OS
+			$osCompatible = true;
+			if (!empty($os) && isset($news["os"]))
+			{
+				$osCompatible = ($news["os"] === $os);
+			}
+
+			if ($osCompatible)
+			{
+				// Add news to output buffer
+				$output = addNewsToBuffer($output, $news);
+			}
 		}
 	}
 }

@@ -222,8 +222,8 @@ public:
 				labelEntityIdValue->setText(hive::modelsLibrary::helper::toHexQString(_entityID.getValue(), true, true));
 				labelVendorNameValue->setText(hive::modelsLibrary::helper::localizedString(*controlledEntity, staticModel.vendorNameString));
 				labelModelNameValue->setText(hive::modelsLibrary::helper::localizedString(*controlledEntity, staticModel.modelNameString));
-				labelFirmwareVersionValue->setText(dynamicModel.firmwareVersion.data());
-				labelSerialNumberValue->setText(dynamicModel.serialNumber.data());
+				labelFirmwareVersionValue->setText(QString::fromStdString(dynamicModel.firmwareVersion));
+				labelSerialNumberValue->setText(QString::fromStdString(dynamicModel.serialNumber));
 
 				_previousConfigurationIndex = configurationNode.descriptorIndex;
 			}
@@ -402,14 +402,7 @@ public:
 				if (latencyData->value(DeviceDetailsLatencyTableModelColumn::Latency).canConvert<LatencyTableRowEntry>())
 				{
 					auto const& latencyTableRowEntry = latencyData->value(DeviceDetailsLatencyTableModelColumn::Latency).value<LatencyTableRowEntry>();
-
-					{
-						auto streamInfo = la::avdecc::entity::model::StreamInfo{};
-						streamInfo.streamInfoFlags.set(la::avdecc::entity::StreamInfoFlag::MsrpAccLatValid);
-						streamInfo.msrpAccumulatedLatency = latencyTableRowEntry.latency.count();
-						manager.setStreamOutputInfo(_entityID, latencyTableRowEntry.streamIndex, streamInfo);
-					}
-
+					manager.smartSetMaxTransitTime(_entityID, latencyTableRowEntry.streamIndex, latencyTableRowEntry.latency);
 					_expectedChanges++;
 				}
 			}
@@ -471,22 +464,18 @@ public:
 						// skip clock stream
 						continue;
 					}
-					auto const streamLatency = streamOutput.second.dynamicModel.streamDynamicInfo ? (*streamOutput.second.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency : decltype(_userSelectedLatency){ std::nullopt };
-					auto const latencyValuesValid = (streamLatency != std::nullopt && _userSelectedLatency != std::nullopt);
-					if (latencyValuesValid && *streamLatency != *_userSelectedLatency)
+					auto const streamLatency = streamOutput.second.dynamicModel.presentationTimeOffset;
+					auto selectedLatency = streamLatency;
+					if (_userSelectedLatency != std::nullopt)
 					{
-						auto streamInfo = la::avdecc::entity::model::StreamInfo{};
-						streamInfo.streamInfoFlags.set(la::avdecc::entity::StreamInfoFlag::MsrpAccLatValid);
-						streamInfo.msrpAccumulatedLatency = *_userSelectedLatency;
-
+						selectedLatency = std::chrono::nanoseconds{ *_userSelectedLatency };
+					}
+					if (streamLatency != selectedLatency)
+					{
 						// TODO: All streams have to be stopped for this to work. So this needs a state machine / task sequence.
 						// TODO: needs update of library:
-						manager.setStreamOutputInfo(_entityID, streamOutput.first, streamInfo, {},
-							[](la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)
-							{
-								// Define empty result handler so we don't trigger ControllerManager::AecpCommandType::SetStreamInfo
-								// We don't want to trigger it because we didn't increase _expectedChanges (so we don't want to increase _gottenChanges)
-							});
+						manager.smartSetMaxTransitTime(_entityID, streamOutput.first, selectedLatency);
+						_expectedChanges++;
 					}
 				}
 			}
@@ -632,17 +621,12 @@ public:
 		}
 
 		{
-			// Try to get the streamoutput's current latency from the dynamic model
-			auto const currentLatency = node.dynamicModel.streamDynamicInfo ? (*node.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency : std::nullopt;
-			if (currentLatency)
-			{
-				// add the streamoutput node to the latencies model
-				_deviceDetailsLatencyTableModel.addNode(node.descriptorIndex, std::chrono::nanoseconds{ *currentLatency });
+			// add the streamoutput node to the latencies model
+			_deviceDetailsLatencyTableModel.addNode(node.descriptorIndex, node.dynamicModel.presentationTimeOffset);
 
-				// open the persistent editor for the just added streamoutput
-				auto modIdx = _deviceDetailsLatencyTableModel.index(_deviceDetailsLatencyTableModel.rowCount() - 1, static_cast<int>(DeviceDetailsLatencyTableModelColumn::Latency), QModelIndex());
-				tableViewLatency->openPersistentEditor(modIdx);
-			}
+			// open the persistent editor for the just added streamoutput
+			auto modIdx = _deviceDetailsLatencyTableModel.index(_deviceDetailsLatencyTableModel.rowCount() - 1, static_cast<int>(DeviceDetailsLatencyTableModelColumn::Latency), QModelIndex());
+			tableViewLatency->openPersistentEditor(modIdx);
 		}
 	}
 
@@ -727,17 +711,12 @@ public:
 			}
 
 			{
-				// Try to get the streamoutput's current latency from the dynamic model
-				auto const currentLatency = node.dynamicModel.streamDynamicInfo ? (*node.dynamicModel.streamDynamicInfo).msrpAccumulatedLatency : std::nullopt;
-				if (currentLatency)
-				{
-					// add the streamoutput node to the latencies model
-					_deviceDetailsLatencyTableModel.addNode(node.descriptorIndex, std::chrono::nanoseconds{ *currentLatency });
+				// add the streamoutput node to the latencies model
+				_deviceDetailsLatencyTableModel.addNode(node.descriptorIndex, node.dynamicModel.presentationTimeOffset);
 
-					// open the persistent editor for the just added streamoutput
-					auto modIdx = _deviceDetailsLatencyTableModel.index(_deviceDetailsLatencyTableModel.rowCount() - 1, static_cast<int>(DeviceDetailsLatencyTableModelColumn::Latency), QModelIndex());
-					tableViewLatency->openPersistentEditor(modIdx);
-				}
+				// open the persistent editor for the just added streamoutput
+				auto modIdx = _deviceDetailsLatencyTableModel.index(_deviceDetailsLatencyTableModel.rowCount() - 1, static_cast<int>(DeviceDetailsLatencyTableModelColumn::Latency), QModelIndex());
+				tableViewLatency->openPersistentEditor(modIdx);
 			}
 		}
 	}
@@ -862,6 +841,7 @@ public:
 				case hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamFormat:
 				case hive::modelsLibrary::ControllerManager::AecpCommandType::SetStreamInfo:
 				case hive::modelsLibrary::ControllerManager::AecpCommandType::SetMaxTransitTime:
+				case hive::modelsLibrary::ControllerManager::AecpCommandType::SmartSetMaxTransitTime:
 					_gottenChanges++;
 					break;
 				default:

@@ -129,6 +129,7 @@ public:
 		std::set<la::avdecc::entity::model::StreamIndex> streamsWithErrorCounter{}; /** Change triggers ChangedInfoFlag::StreamInputCountersError */
 		std::set<la::avdecc::entity::model::StreamIndex> streamsWithLatencyError{}; /** Change triggers ChangedInfoFlag::StreamInputLatencyError */
 		std::set<la::avdecc::entity::model::ControlIndex> controlsWithOutOfBoundsValue{}; /** Change triggers ChangedInfoFlag::ControlValueOutOfBoundsError */
+		bool hadCompatibilityChangeEvent{ false }; /** Change triggers ChangedInfoFlag::CompatibilityChangeEvent */
 	};
 
 	using Model = DiscoveredEntitiesAbstractTableModel;
@@ -176,6 +177,7 @@ public:
 		StreamInputCountersError = 1u << 20,
 		StreamInputLatencyError = 1u << 21,
 		ControlValueOutOfBoundsError = 1u << 22,
+		CompatibilityChangeEvent = 1u << 23,
 	};
 	using ChangedInfoFlags = la::avdecc::utils::EnumBitfield<ChangedInfoFlag>;
 

@@ -112,21 +112,59 @@ public:
 		return getCurrentData();
 	}
 
+	/** Helper function to update the possible latency values based on the stream format. */
+	void updatePossibleLatencyValues(la::avdecc::entity::model::StreamFormat const& streamFormat) noexcept
+	{
+		using namespace std::chrono_literals;
+		auto const PresentationTimes = std::set<std::chrono::microseconds>{ 250us, 500us, 750us, 1000us, 1250us, 1500us, 1750us, 2000us, 2250us, 2500us, 2750us, 3000us };
+
+		auto const streamFormatInfo = la::avdecc::entity::model::StreamFormatInfo::create(streamFormat);
+		auto const freq = static_cast<std::uint32_t>(streamFormatInfo->getSamplingRate().getNominalSampleRate());
+		auto latencyDatas = std::set<LatencyComboBox_t, LatencyComboBoxCompare>{};
+		for (auto const& presentationTime : PresentationTimes)
+		{
+			// Compute the number of samples for the given desired presentation time, rounding to the nearest integer
+			auto const numberOfSamplesInBuffer = std::lround(presentationTime.count() * freq / std::remove_reference_t<decltype(presentationTime)>::period::den);
+
+			// Compute the required duration of the buffer to hold the desired number of samples
+			auto const bufferDuration = std::chrono::nanoseconds{ std::lround(numberOfSamplesInBuffer * std::chrono::nanoseconds::period::den / freq) };
+
+			latencyDatas.insert(LatencyComboBox_t{ bufferDuration, labelFromLatency(bufferDuration), false });
+		}
+		latencyDatas.insert(LatencyComboBox_t{ std::chrono::nanoseconds{}, "Custom", true });
+		setLatencyDatas(latencyDatas);
+	}
+
+	static std::string labelFromLatency(std::chrono::nanoseconds const& latency) noexcept
+	{
+		// If the latency is below 100 microsecond, we display it in nanoseconds
+		if (latency < std::chrono::microseconds{ 100 })
+		{
+			return std::to_string(latency.count()) + " nsec";
+		}
+
+		// Convert desired latency from nanoseconds to floating point milliseconds with 3 digits after the decimal point (only if not zero)
+		auto const latencyInMs = static_cast<float>(latency.count()) / static_cast<float>(std::chrono::nanoseconds::period::den / std::chrono::milliseconds::period::den);
+		auto const latencyInMsRounded = std::round(latencyInMs * 1000.0f) / 1000.0f;
+		auto ss = std::stringstream{};
+		ss << std::fixed << std::setprecision(3) << latencyInMsRounded;
+
+		return ss.str() + " msec";
+	}
+
 private:
 	using BaseComboBoxType::setIndexChangedHandler;
 	using BaseComboBoxType::setAllData;
 	using BaseComboBoxType::getCurrentData;
 
-	std::string labelFromLatency(std::chrono::nanoseconds const& latency) const noexcept
-	{
-		return std::to_string(latency.count()) + " nsec";
-	}
-
 	bool isStaticValue(std::chrono::nanoseconds const& latency) const noexcept
 	{
 		for (auto const& latencyData : getAllData())
 		{
-			if (std::get<0>(latencyData) == latency)
+			auto const lat = std::get<0>(latencyData);
+			auto const isCustomOpt = std::get<2>(latencyData);
+			if (lat == latency && (!isCustomOpt || !*isCustomOpt))
+
 			{
 				return true;
 			}

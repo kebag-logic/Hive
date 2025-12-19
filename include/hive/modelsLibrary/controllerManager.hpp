@@ -92,6 +92,7 @@ public:
 		AbortOperation,
 		IdentifyEntity,
 		SetMaxTransitTime,
+		SmartSetMaxTransitTime,
 	};
 
 	enum class MilanCommandType
@@ -155,6 +156,8 @@ public:
 	using StartUploadMemoryObjectOperationHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::OperationID const operationID)>;
 	using AbortOperationHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using IdentifyEntityHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
+	using SetMaxTransitTimeHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
+	using SmartSetMaxTransitTimeHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using SetSystemUniqueIDHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
 	using SetMediaClockReferenceInfoHandler = std::function<void(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status)>;
 	/* ACMP handlers to override the global ACMP result process */
@@ -295,6 +298,8 @@ public:
 	virtual void startStoreAndRebootMemoryObjectOperation(la::avdecc::UniqueIdentifier targetEntityID, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, BeginCommandHandler const& beginHandler = {}, StartStoreAndRebootMemoryObjectOperationHandler const& resultHandler = {}) noexcept = 0;
 	virtual void startUploadMemoryObjectOperation(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, BeginCommandHandler const& beginHandler = {}, StartUploadMemoryObjectOperationHandler const& resultHandler = {}) noexcept = 0;
 	virtual void abortOperation(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, BeginCommandHandler const& beginHandler = {}, AbortOperationHandler const& resultHandler = {}) noexcept = 0;
+	virtual void setMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler = {}, SetMaxTransitTimeHandler const& resultHandler = {}) noexcept = 0;
+	virtual void smartSetMaxTransitTime(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime, BeginCommandHandler const& beginHandler = {}, SmartSetMaxTransitTimeHandler const& resultHandler = {}) noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AA */
 	/* For all AECP-AA commands, the provided handler will be called from the network thread. */
@@ -302,7 +307,7 @@ public:
 	virtual void writeDeviceMemory(la::avdecc::UniqueIdentifier const targetEntityID, std::uint64_t const address, la::avdecc::controller::Controller::DeviceMemoryBuffer memoryBuffer, la::avdecc::controller::Controller::WriteDeviceMemoryProgressHandler const& progressHandler, la::avdecc::controller::Controller::WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique) */
-	virtual void setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID, BeginCommandHandler const& beginHandler = {}, SetSystemUniqueIDHandler const& resultHandler = {}) noexcept = 0;
+	virtual void setSystemUniqueID(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::UniqueIdentifier const systemUniqueID, QString const& name, BeginCommandHandler const& beginHandler = {}, SetSystemUniqueIDHandler const& resultHandler = {}) noexcept = 0;
 	virtual void setMediaClockReferenceInfo(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, std::optional<la::avdecc::entity::model::MediaClockReferencePriority> const userPriority, std::optional<la::avdecc::entity::model::AvdeccFixedString> const& domainName, BeginCommandHandler const& beginHandler = {}, SetMediaClockReferenceInfoHandler const& resultHandler = {}) noexcept = 0;
 
 	/* Connection Management Protocol (ACMP) */
@@ -336,7 +341,7 @@ public:
 	Q_SIGNAL void entityOffline(la::avdecc::UniqueIdentifier const entityID);
 	Q_SIGNAL void entityRedundantInterfaceOnline(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation const& interfaceInfo);
 	Q_SIGNAL void entityRedundantInterfaceOffline(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex);
-	Q_SIGNAL void unsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed);
+	Q_SIGNAL void unsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed, bool const triggeredByEntity);
 	Q_SIGNAL void compatibilityChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion);
 	Q_SIGNAL void entityCapabilitiesChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::EntityCapabilities const entityCapabilities);
 	Q_SIGNAL void associationIDChanged(la::avdecc::UniqueIdentifier const entityID, std::optional<la::avdecc::UniqueIdentifier> const associationID);
@@ -374,18 +379,20 @@ public:
 	Q_SIGNAL void clockDomainCountersChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::ClockDomainCounters const& counters);
 	Q_SIGNAL void streamInputCountersChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInputCounters const& counters);
 	Q_SIGNAL void streamOutputCountersChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamOutputCounters const& counters);
+	Q_SIGNAL void streamOutputSignalPresenceChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::SignalPresenceChannels const& signalPresence);
 	Q_SIGNAL void memoryObjectLengthChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
 	Q_SIGNAL void streamPortAudioMappingsChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::StreamPortIndex const streamPortIndex);
 	Q_SIGNAL void operationProgress(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, float const percentComplete); // A negative percentComplete value means the progress is unknown but still continuing
 	Q_SIGNAL void operationCompleted(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, bool const failed);
 	Q_SIGNAL void mediaClockChainChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::controller::model::MediaClockChain const& mcChain);
 	Q_SIGNAL void maxTransitTimeChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, std::chrono::nanoseconds const& maxTransitTime);
-	Q_SIGNAL void systemUniqueIDChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::SystemUniqueIdentifier const systemUniqueID);
+	Q_SIGNAL void systemUniqueIDChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::UniqueIdentifier const systemUniqueID, QString const& systemName);
 	Q_SIGNAL void mediaClockReferenceInfoChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::MediaClockReferenceInfo const& info);
 
 	/* Connection changed signals */
 	Q_SIGNAL void streamInputConnectionChanged(la::avdecc::entity::model::StreamIdentification const& stream, la::avdecc::entity::model::StreamInputConnectionInfo const& info);
 	Q_SIGNAL void streamOutputConnectionsChanged(la::avdecc::entity::model::StreamIdentification const& stream, la::avdecc::entity::model::StreamConnections const& connections);
+	Q_SIGNAL void channelInputConnectionChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification);
 
 	/* Entity commands signals */
 	Q_SIGNAL void beginAecpCommand(la::avdecc::UniqueIdentifier const entityID, hive::modelsLibrary::ControllerManager::AecpCommandType const commandType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);

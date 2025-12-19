@@ -36,6 +36,10 @@
 #	include <QDir>
 #endif
 
+#if defined(Q_OS_WIN32)
+#include <Windows.h>
+#endif
+
 #include "avdecc/helper.hpp"
 #include "avdecc/hiveLogItems.hpp"
 #include "avdecc/channelConnectionManager.hpp"
@@ -148,6 +152,7 @@ public:
 	void checkNpfStatus();
 	void loadSettings();
 	void connectSignals();
+	void setAppearance(Qt::ColorScheme const appearance);
 	void showChangeLog(QString const title, QString const versionString);
 	void showNewsFeed(QString const& news);
 	void updateStyleSheet(qtMate::material::color::Name const colorName, QString const& filename);
@@ -522,11 +527,13 @@ void MainWindowImpl::registerMetaTypes()
 
 void MainWindowImpl::createViewMenu()
 {
-	// Exclusive connection matrix modes
-	auto* actionGroup = new QActionGroup{ this };
-	actionGroup->addAction(actionStreamModeRouting);
-	actionGroup->addAction(actionChannelModeRouting);
-	menuView->addSeparator();
+	// Exclusive connection matrix modes (Action Group)
+	{
+		auto* actionGroup = new QActionGroup{ this };
+		actionGroup->addAction(actionStreamModeRouting);
+		actionGroup->addAction(actionChannelModeRouting);
+		menuView->addSeparator();
+	}
 
 	// Toolbars visibility toggle
 	menuView->addAction(controllerToolBar->toggleViewAction());
@@ -536,10 +543,22 @@ void MainWindowImpl::createViewMenu()
 	// Main widgets visibility toggle
 	menuView->addAction(entitiesDockWidget->toggleViewAction());
 	menuView->addAction(entityInspectorDockWidget->toggleViewAction());
+	menuView->addAction(loggerDockWidget->toggleViewAction());
 	menuView->addSeparator();
 
-	// Logger visibility toggle
-	menuView->addAction(loggerDockWidget->toggleViewAction());
+	// Appearance in a sub menu and exclusive action group
+	{
+		auto* appearanceMenu = new QMenu("Appearance", menuView);
+		appearanceMenu->addAction(actionSchemeSystem);
+		appearanceMenu->addAction(actionSchemeLight);
+		appearanceMenu->addAction(actionSchemeDark);
+		menuView->addMenu(appearanceMenu);
+
+		auto* actionGroup = new QActionGroup{ this };
+		actionGroup->addAction(actionSchemeSystem);
+		actionGroup->addAction(actionSchemeLight);
+		actionGroup->addAction(actionSchemeDark);
+	}
 }
 
 void MainWindowImpl::createToolbars()
@@ -704,6 +723,10 @@ void MainWindowImpl::loadSettings()
 	auto* action = channelMode ? actionChannelModeRouting : actionStreamModeRouting;
 	action->setChecked(true);
 
+	// Set appearance
+	auto const appearance = settings->getValue<Qt::ColorScheme>(settings::Appearance.name);
+	setAppearance(appearance);
+
 	if (!_mustResetViewSettings)
 	{
 		discoveredEntitiesView->entitiesTableView()->restoreState();
@@ -754,6 +777,31 @@ void MainWindowImpl::connectSignals()
 			// Toggle
 			auto* action = checked ? actionChannelModeRouting : actionStreamModeRouting;
 			action->setChecked(true);
+		});
+
+	connect(actionSchemeSystem, &QAction::toggled, this,
+		[this](bool checked)
+		{
+			if (checked)
+			{
+				setAppearance(Qt::ColorScheme::Unknown);
+			}
+		});
+	connect(actionSchemeLight, &QAction::toggled, this,
+		[this](bool checked)
+		{
+			if (checked)
+			{
+				setAppearance(Qt::ColorScheme::Light);
+			}
+		});
+	connect(actionSchemeDark, &QAction::toggled, this,
+		[this](bool checked)
+		{
+			if (checked)
+			{
+				setAppearance(Qt::ColorScheme::Dark);
+			}
 		});
 
 	// Connect discoveredEntities::view signals
@@ -1058,6 +1106,26 @@ void MainWindowImpl::connectSignals()
 			auto const colorName = qtMate::material::color::Palette::name(themeColorIndex);
 			updateStyleSheet(colorName, ":/style.qss");
 		});
+}
+
+void MainWindowImpl::setAppearance(Qt::ColorScheme const appearance)
+{
+	switch (appearance)
+	{
+		case Qt::ColorScheme::Unknown:
+			actionSchemeSystem->setChecked(true);
+			break;
+		case Qt::ColorScheme::Light:
+			actionSchemeLight->setChecked(true);
+			break;
+		case Qt::ColorScheme::Dark:
+			actionSchemeDark->setChecked(true);
+			break;
+	}
+	QApplication::styleHints()->setColorScheme(appearance);
+
+	auto* const settings = qApp->property(settings::SettingsManager::PropertyName).value<settings::SettingsManager*>();
+	settings->setValue(settings::Appearance.name, appearance);
 }
 
 void MainWindowImpl::showChangeLog(QString const title, QString const versionString)

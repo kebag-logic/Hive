@@ -24,7 +24,7 @@
 
 namespace qtMate::flow
 {
-QColor FlowSceneDelegate::socketTypeColor(FlowSocketType type) const
+QColor FlowSceneDelegate::socketTypeColor(FlowSocketType /*type*/) const
 {
 	return Qt::darkGray;
 }

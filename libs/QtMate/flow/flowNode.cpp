@@ -42,7 +42,7 @@ public:
 		return QRectF{ 0.f, 0.f, NODE_WIDTH, NODE_HEADER_HEIGHT };
 	}
 
-	virtual void paint(QPainter* painter, QStyleOptionGraphicsItem const* option, QWidget* widget) override
+	virtual void paint(QPainter* painter, QStyleOptionGraphicsItem const* /*option*/, QWidget* /*widget*/) override
 	{
 		auto const r = boundingRect();
 
@@ -199,7 +199,7 @@ QRectF FlowNode::fixedBoundingRect() const
 	return QRectF{ 0.f, 0.f, NODE_WIDTH, NODE_HEADER_HEIGHT + collapseRatio(false) * (NODE_HEADER_SEPARATOR_HEIGHT + NODE_SOCKET_AREA_INSET_TOP + n * NODE_LINE_HEIGHT + NODE_SOCKET_AREA_INSET_BOTTOM) };
 }
 
-void FlowNode::paint(QPainter* painter, QStyleOptionGraphicsItem const* option, QWidget* widget)
+void FlowNode::paint(QPainter* painter, QStyleOptionGraphicsItem const* /*option*/, QWidget* /*widget*/)
 {
 	auto const r = boundingRect();
 

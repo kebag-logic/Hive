@@ -24,16 +24,16 @@ newsfeedfile_url=news.json
 use_sparkle=true
 
 # Appcast URL for Hive Releases - Only use https URLs (except for debugging when using localhost)
-appcast_releases=https://www.kikisoft.com/Hive/appcast-release.xml
+appcast_releases=https://www.kikisoft.com/Hive/appcast-release-@CU_PROJECT_MARKETING_VERSION@.xml
 
 # Appcast URL for Hive Betas - Only use https URLs (except for debugging when using localhost)
-appcast_betas=https://www.kikisoft.com/Hive/appcast-beta.xml
+appcast_betas=https://www.kikisoft.com/Hive/appcast-beta-@CU_PROJECT_MARKETING_VERSION@.xml
 
 # Fallback appcast URL for Hive Releases, in case main URL doesn't work - Only use https URLs (except for debugging when using localhost)
-appcast_releases_fallback=https://www.kikisoft.com/Hive/appcast-release.xml
+appcast_releases_fallback=https://www.kikisoft.com/Hive/appcast-release-@CU_PROJECT_MARKETING_VERSION@.xml
 
 # Fallback appcast URL for Hive Betas, in case main URL doesn't work - Only use https URLs (except for debugging when using localhost)
-appcast_betas_fallback=https://www.kikisoft.com/Hive/appcast-beta.xml
+appcast_betas_fallback=https://www.kikisoft.com/Hive/appcast-beta-@CU_PROJECT_MARKETING_VERSION@.xml
 
 ################ Debug Symbols
 # Windows symstore.exe location (cygwin, mixed or windows path style ; Don't use quotes) - Can be a network path

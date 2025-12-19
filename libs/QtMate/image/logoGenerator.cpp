@@ -123,7 +123,7 @@ QImage LogoGenerator::generateRecentredImage(QImage& image, QSize const& size)
 	return centeredImage;
 }
 
-std::optional<QRectF> LogoGenerator::drawIcon(QPainter& painter, QSvgRenderer* iconSvgRenderer, qreal x, qreal y, qreal height, qreal width, qreal topMargin, qreal leftMargin)
+std::optional<QRectF> LogoGenerator::drawIcon(QPainter& painter, QSvgRenderer* iconSvgRenderer, qreal x, qreal y, qreal height, qreal /*width*/, qreal topMargin, qreal leftMargin)
 {
 	if (iconSvgRenderer == nullptr)
 	{
@@ -202,7 +202,7 @@ QFontMetrics LogoGenerator::fitFontToWidth(QFont& font, QString const& text, qre
 	return fontMetrics;
 }
 
-QFontMetrics LogoGenerator::fitFontToHeight(QFont& font, QString const& text, qreal height)
+QFontMetrics LogoGenerator::fitFontToHeight(QFont& font, QString const& /*text*/, qreal height)
 {
 	font.setPixelSize(height); // Start with the maximum font size
 	auto fontMetrics = QFontMetrics(font);

@@ -74,6 +74,7 @@ const std::vector<la::avdecc::logger::Level> loggerLevels{
 	la::avdecc::logger::Level::Info,
 	la::avdecc::logger::Level::Warn,
 	la::avdecc::logger::Level::Error,
+	la::avdecc::logger::Level::Compat,
 };
 
 LoggerView::LoggerView(QWidget* parent)

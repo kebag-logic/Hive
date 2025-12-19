@@ -4,6 +4,26 @@ All notable changes to Hive will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-12-19
+### Added
+- Possibility to set the application appearance (light, dark, system) from the View menu
+- Support for both 1722.1 and Milan 1.2 Stream Output Counters
+- Support for Presentation Time Offset configuration in Stream Output descriptor
+- Device compatibility reporting
+  - Warning indicators for devices that have had compatibility change events
+  - Compatibility Change Events window (in Entity Descriptor Diagnostics)
+- Added Milan 1.3 support:
+  - System Unique ID extended and System Name
+  - Bind/Unbind Milan mechanism
+  - Signal Presence indicators in StreamOutput descriptor
+
+### Changed
+- Using AVDECC Library internal Channel Connection Manager for channel based routing
+
+### Fixed
+- [Possible string overflow when using max length names](https://github.com/christophe-calmejane/Hive/issues/185)
+- Incorrect AEM checksum values on some platforms
+
 ## [1.3.1] - 2025-04-18
 ### Added
 - Support for TIMING, PTP_INSTANCE and PTP_PORT descriptors
@@ -12,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to refresh a virtual entity
 - Support for SERIAL Protocol Interface (by Luke Howard)
 - Support for LOCAL SOCKET Protocol Interface (by Luke Howard)
-- Added Milan 1.2 values:
+- Added Milan 1.2 support:
   - System Unique ID
   - Media Clock Reference Info (in ClockDomain descriptor)
 - Controlled Entity enumeration status:

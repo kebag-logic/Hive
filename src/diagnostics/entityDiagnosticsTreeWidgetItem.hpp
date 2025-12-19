@@ -38,14 +38,16 @@
 class EntityDiagnosticsTreeWidgetItem : public QObject, public QTreeWidgetItem
 {
 public:
-	EntityDiagnosticsTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::Diagnostics const& diagnostics, QTreeWidget* parent = nullptr);
+	EntityDiagnosticsTreeWidgetItem(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::Diagnostics const& diagnostics, la::avdecc::controller::ControlledEntity::CompatibilityChangedEvents const& compatibilityChangedEvents, QTreeWidget* parent = nullptr);
 
 private:
 	void updateDiagnostics(la::avdecc::controller::ControlledEntity::Diagnostics const& diagnostics);
+	void showCompatibilityChangeEvents();
 
 	la::avdecc::UniqueIdentifier const _entityID{};
 
 	// Diagnostics
 	la::avdecc::controller::ControlledEntity::Diagnostics _diagnostics{};
 	QTreeWidgetItem* _redundancyWarning{ nullptr };
+	QPushButton* _compatibilityLogButton{ nullptr };
 };

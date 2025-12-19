@@ -315,6 +315,10 @@ private:
 						auto const chksumOpt = controllerManager.computeEntityModelChecksum(entity, std::uint32_t{ 4u });
 						addTextItem(checksumItem, "AEM Checksum v4", QString::fromStdString(chksumOpt ? (*chksumOpt) : std::string{ "Must enable 'Full AEM Enumeration'" }));
 					}
+					{
+						auto const chksumOpt = controllerManager.computeEntityModelChecksum(entity, std::uint32_t{ 5u });
+						addTextItem(checksumItem, "AEM Checksum v5", QString::fromStdString(chksumOpt ? (*chksumOpt) : std::string{ "Must enable 'Full AEM Enumeration'" }));
+					}
 				}
 				addFlagsItem(descriptorItem, "Talker Capabilities", la::avdecc::utils::forceNumeric(talkerCaps.value()), avdecc::helper::capabilitiesToString(talkerCaps));
 				addTextItem(descriptorItem, "Talker Max Sources", QString::number(e.getTalkerStreamSources()));
@@ -326,8 +330,8 @@ private:
 
 			addTextItem(descriptorItem, "Vendor Name", hive::modelsLibrary::helper::localizedString(entity, staticModel.vendorNameString));
 			addTextItem(descriptorItem, "Model Name", hive::modelsLibrary::helper::localizedString(entity, staticModel.modelNameString));
-			addTextItem(descriptorItem, "Firmware Version", dynamicModel.firmwareVersion.data());
-			addTextItem(descriptorItem, "Serial Number", dynamicModel.serialNumber.data());
+			addTextItem(descriptorItem, "Firmware Version", QString::fromStdString(dynamicModel.firmwareVersion));
+			addTextItem(descriptorItem, "Serial Number", QString::fromStdString(dynamicModel.serialNumber));
 			addTextItem(descriptorItem, "Unsol Supported", entity.areUnsolicitedNotificationsSupported() ? "Yes" : "No");
 			addTextItem(descriptorItem, "Fast Enum Supported", controllerManager.isFastEnumerationEnabled() ? (entity.isPackedDynamicInfoSupported() ? "Yes" : "No") : "Disabled in options");
 			addTextItem(descriptorItem, "Using Cached AEM", controllerManager.isAemCacheEnabled() ? (entity.isUsingCachedEntityModel() ? "Yes" : "No") : "Disabled in options");
@@ -343,24 +347,38 @@ private:
 				auto* milanInfoItem = new QTreeWidgetItem(q);
 				milanInfoItem->setText(0, "Milan Info");
 
+				{
+					auto* const compatibilityLabel = addChangingTextItem(milanInfoItem, "Compatibility");
+					auto const updateCompatibilityLabel = [this, compatibilityLabel](la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::ControlledEntity::CompatibilityFlags const compatibilityFlags, la::avdecc::entity::model::MilanVersion const& milanCompatibleVersion)
+					{
+						if (entityID == _controlledEntityID)
+						{
+							auto compatStr = QString{ "Not Milan Compatible" };
+							if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::MilanWarning))
+							{
+								compatStr = QString{ "Milan Compatible v%1 (with warnings)" }.arg(milanCompatibleVersion.to_string(2).c_str());
+							}
+							else if (compatibilityFlags.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan))
+							{
+								compatStr = QString{ "Milan Compatible v%1" }.arg(milanCompatibleVersion.to_string(2).c_str());
+							}
+
+							compatibilityLabel->setText(compatStr);
+						}
+					};
+
+					// Update text now
+					updateCompatibilityLabel(_controlledEntityID, entity.getCompatibilityFlags(), entity.getMilanCompatibilityVersion());
+
+					// Listen for changes
+					connect(&controllerManager, &hive::modelsLibrary::ControllerManager::compatibilityChanged, compatibilityLabel, updateCompatibilityLabel);
+				}
+
 				auto const milanInfo = *milanInfoOpt;
-				auto const compat = entity.getCompatibilityFlags();
-				auto const compatVersion = entity.getMilanCompatibilityVersion();
-
-				auto compatStr = QString{ "Not Milan Compatible" };
-				if (compat.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::MilanWarning))
-				{
-					compatStr = QString{ "Milan Compatible v%1 (with warnings)" }.arg(compatVersion.to_string(2).c_str());
-				}
-				else if (compat.test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan))
-				{
-					compatStr = QString{ "Milan Compatible v%1" }.arg(compatVersion.to_string(2).c_str());
-				}
-
-				addTextItem(milanInfoItem, "Compatibility", compatStr);
 				addTextItem(milanInfoItem, "Protocol Version", QString::number(milanInfo.protocolVersion));
 				addFlagsItem(milanInfoItem, "Features", la::avdecc::utils::forceNumeric(milanInfo.featuresFlags.value()), avdecc::helper::flagsToString(milanInfo.featuresFlags));
 				addTextItem(milanInfoItem, "Certification Version", static_cast<std::string>(milanInfo.certificationVersion));
+				addTextItem(milanInfoItem, "Specification Version", static_cast<std::string>(milanInfo.specificationVersion));
 			}
 		}
 
@@ -398,8 +416,8 @@ private:
 			}
 
 			{
-				auto* const subscribedLabel = addChangingTextItem(dynamicItem, "Subcsribed to Unsol");
-				auto const updateSubscribedLabel = [this, subscribedLabel](la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed)
+				auto* const subscribedLabel = addChangingTextItem(dynamicItem, "Subscribed to Unsol");
+				auto const updateSubscribedLabel = [this, subscribedLabel](la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed, bool const /*triggeredByEntity*/)
 				{
 					if (entityID == _controlledEntityID)
 					{
@@ -408,7 +426,7 @@ private:
 				};
 
 				// Update text now
-				updateSubscribedLabel(_controlledEntityID, entity.isSubscribedToUnsolicitedNotifications());
+				updateSubscribedLabel(_controlledEntityID, entity.isSubscribedToUnsolicitedNotifications(), false);
 
 				// Listen for changes
 				connect(&controllerManager, &hive::modelsLibrary::ControllerManager::unsolicitedRegistrationChanged, subscribedLabel, updateSubscribedLabel);
@@ -473,7 +491,7 @@ private:
 
 		// Diagnostics
 		{
-			auto* diagnosticsItem = new EntityDiagnosticsTreeWidgetItem(_controlledEntityID, controlledEntity->getDiagnostics(), q);
+			auto* diagnosticsItem = new EntityDiagnosticsTreeWidgetItem(_controlledEntityID, controlledEntity->getDiagnostics(), controlledEntity->getCompatibilityChangedEvents(), q);
 			diagnosticsItem->setText(0, "Diagnostics");
 		}
 	}
@@ -632,8 +650,8 @@ private:
 		// Counters (if supported by the entity)
 		if (_isActiveConfiguration && node.descriptorType == la::avdecc::entity::model::DescriptorType::StreamOutput && node.dynamicModel.counters && !node.dynamicModel.counters->empty())
 		{
-			auto* countersItem = new StreamOutputCountersTreeWidgetItem(_controlledEntityID, node.descriptorIndex, *node.dynamicModel.counters, q);
-			countersItem->setText(0, "Counters");
+			new StreamOutputCountersTreeWidgetItem(_controlledEntityID, node.descriptorIndex, *node.dynamicModel.counters, node.dynamicModel.signalPresence, q);
+			// Do not set the name, it is already set in the constructor
 		}
 	}
 
@@ -1277,11 +1295,11 @@ public:
 		{
 			if (commandType != hive::modelsLibrary::ControllerManager::AecpCommandType::None)
 			{
-				addEditableTextItem(nameItem, "Name", node.dynamicModel.objectName.data(), commandType, descriptorIndex, customData);
+				addEditableTextItem(nameItem, "Name", QString::fromStdString(node.dynamicModel.objectName), commandType, descriptorIndex, customData);
 			}
 			else
 			{
-				addTextItem(nameItem, "Name", node.dynamicModel.objectName.data());
+				addTextItem(nameItem, "Name", QString::fromStdString(node.dynamicModel.objectName));
 			}
 		}
 		else
@@ -1784,17 +1802,6 @@ public:
 				// Send changes
 				switch (commandType)
 				{
-					case hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID:
-						try
-						{
-							auto const systemUniqueID = static_cast<la::avdecc::entity::model::SystemUniqueIdentifier>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::SystemUniqueIdentifier>(newText.toStdString().c_str()));
-							hive::modelsLibrary::ControllerManager::getInstance().setSystemUniqueID(_controlledEntityID, systemUniqueID, textEntry->getBeginCommandHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID), textEntry->getResultHandler(hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID, oldText));
-						}
-						catch (std::invalid_argument const& e)
-						{
-							QMessageBox::warning(q_ptr, "", QString("Cannot set System Unique ID: Invalid EID: %1").arg(e.what()));
-						}
-						break;
 					case hive::modelsLibrary::ControllerManager::MilanCommandType::SetMediaClockReferenceInfo:
 						try
 						{
@@ -1830,19 +1837,6 @@ public:
 		{
 			switch (commandType)
 			{
-				case hive::modelsLibrary::ControllerManager::MilanCommandType::SetSystemUniqueID:
-				{
-					// TODO
-					/*connect(&hive::modelsLibrary::ControllerManager::getInstance(), &hive::modelsLibrary::ControllerManager::associationIDChanged, textEntry,
-						[this, textEntry](la::avdecc::UniqueIdentifier const entityID, std::optional<la::avdecc::UniqueIdentifier> const& associationID)
-						{
-							if (entityID == _controlledEntityID)
-							{
-								textEntry->setCurrentData(associationID ? hive::modelsLibrary::helper::uniqueIdentifierToString(*associationID) : "");
-							}
-						});*/
-					break;
-				}
 				case hive::modelsLibrary::ControllerManager::MilanCommandType::SetMediaClockReferenceInfo:
 				{
 					auto const customTuple = std::any_cast<std::tuple<la::avdecc::entity::model::ClockDomainIndex, MediaClockReferenceInfoType>>(customData);

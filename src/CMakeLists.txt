@@ -33,18 +33,11 @@ if(WIN32)
 	list(APPEND CONFIGURE_IN_FILES
 		${HIVE_RESOURCES_FOLDER}/win32/Info.rc.in
 	)
-	
+
 	find_package(BugTrap REQUIRED)
 	set(BUGREPORTER_LINK_LIBRARIES "BugTrap")
 elseif(APPLE)
-	# Main icon
-	set(ICON_FILE Icon.icns)
-	set(ICON_PATH ${HIVE_RESOURCES_FOLDER}/macOS/${ICON_FILE})
-	set_source_files_properties(${ICON_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-	list(APPEND RESOURCE_FILES
-		${ICON_PATH}
-	)
-	# Add other icons
+	# Add icons for file associations
 	set_source_files_properties(${HIVE_RESOURCES_FOLDER}/macOS/Icon_AVE.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	set_source_files_properties(${HIVE_RESOURCES_FOLDER}/macOS/Icon_ANS.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	list(APPEND RESOURCE_FILES
@@ -87,6 +80,7 @@ set(HEADER_FILES_COMMON
 	counters/streamInputCountersTreeWidgetItem.hpp
 	counters/streamOutputCountersTreeWidgetItem.hpp
 	discoveredEntities/view.hpp
+	diagnostics/compatibilityChangeEventsDialog.hpp
 	diagnostics/controlDiagnosticsTreeWidgetItem.hpp
 	diagnostics/entityDiagnosticsTreeWidgetItem.hpp
 	diagnostics/streamInputDiagnosticsTreeWidgetItem.hpp
@@ -178,6 +172,7 @@ set(SOURCE_FILES_COMMON
 	counters/streamInputCountersTreeWidgetItem.cpp
 	counters/streamOutputCountersTreeWidgetItem.cpp
 	discoveredEntities/view.cpp
+	diagnostics/compatibilityChangeEventsDialog.cpp
 	diagnostics/controlDiagnosticsTreeWidgetItem.cpp
 	diagnostics/entityDiagnosticsTreeWidgetItem.cpp
 	diagnostics/streamInputDiagnosticsTreeWidgetItem.cpp
@@ -328,8 +323,13 @@ if(BUILD_HIVE_APPLICATION)
 
 	# Configure Icon and PList files for macOS bundle
 	if(APPLE)
+		set(ICON_FILE_NAME Hive)
+
+		# Generate asset catalog on the fly (from source images) - Currently only Mac OSX, but someday we'll do the same for windows
+		cu_compile_asset_catalog(${PROJECT_NAME} SOURCES ${HIVE_RESOURCES_FOLDER}/macOS/${ICON_FILE_NAME}.icon ${HIVE_RESOURCES_FOLDER}/macOS/Assets.xcassets PLATFORM macosx)
+
 		set_target_properties(${PROJECT_NAME} PROPERTIES
-			MACOSX_BUNDLE_ICON_FILE ${ICON_FILE}
+			MACOSX_BUNDLE_ICON_FILE ${ICON_FILE_NAME}
 			MACOSX_BUNDLE_INFO_PLIST ${HIVE_RESOURCES_FOLDER}/macOS/Info.plist.in
 		)
 	endif()

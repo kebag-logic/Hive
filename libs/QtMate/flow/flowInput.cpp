@@ -78,7 +78,7 @@ void FlowInput::updateConnection()
 	}
 }
 
-void FlowInput::paint(QPainter* painter, QStyleOptionGraphicsItem const* option, QWidget* widget)
+void FlowInput::paint(QPainter* painter, QStyleOptionGraphicsItem const* /*option*/, QWidget* /*widget*/)
 {
 	auto const hotSpot = hotSpotBoundingRect().center();
 	drawInputHotSpot(painter, hotSpot, _color, isConnected());

@@ -264,7 +264,7 @@ ChannelKey makeChannelKey(Node* node)
 	if (AVDECC_ASSERT_WITH_RET(node->isChannelNode(), "Node should be of type ChannelNode"))
 	{
 		auto* channelNode = static_cast<ChannelNode*>(node);
-		return std::make_pair(channelNode->entityID(), channelNode->clusterIndex());
+		return std::make_pair(channelNode->entityID(), channelNode->clusterIdentification().clusterIndex);
 	}
 
 	return InvalidChannelKey;
@@ -471,6 +471,7 @@ public:
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::entityOnline, this, &ModelPrivate::handleEntityOnline);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::entityOffline, this, &ModelPrivate::handleEntityOffline);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::unsolicitedRegistrationChanged, this, &ModelPrivate::handleUnsolicitedRegistrationChanged);
+		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::compatibilityChanged, this, &ModelPrivate::handleCompatibilityChanged);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::gptpChanged, this, &ModelPrivate::handleGptpChanged);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::entityNameChanged, this, &ModelPrivate::handleEntityNameChanged);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::avbInterfaceLinkStatusChanged, this, &ModelPrivate::handleAvbInterfaceLinkStatusChanged);
@@ -487,11 +488,8 @@ public:
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::streamNameChanged, this, &ModelPrivate::handleStreamNameChanged);
 
 		// Channel Mode specific signals
-		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::compatibilityChanged, this, &ModelPrivate::handleCompatibilityChanged);
 		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::audioClusterNameChanged, this, &ModelPrivate::handleAudioClusterNameChanged);
-
-		auto& channelConnectionManager = avdecc::ChannelConnectionManager::getInstance();
-		connect(&channelConnectionManager, &avdecc::ChannelConnectionManager::listenerChannelConnectionsUpdate, this, &ModelPrivate::handleListenerChannelConnectionsUpdate);
+		connect(&controllerManager, &hive::modelsLibrary::ControllerManager::channelInputConnectionChanged, this, &ModelPrivate::handleChannelInputConnectionChanged);
 	}
 
 	// Returns talker header orientation
@@ -718,6 +716,7 @@ public:
 	{
 		UpdateLockedState = 1u << 0, /**< Update the Stream Locked State (Stream Input only), or the summary if this is a parent node */
 		UpdateIsStreaming = 1u << 1, /**<  Update the Is Streaming State (Stream Output only), or the summary if this is a parent node */
+		UpdateChannelHasListenerMapping = 1u << 2, /**< Update the Channel Has Listener Mapping State (Mode::Channel only) */
 	};
 	using HeaderDirtyFlags = la::avdecc::utils::EnumBitfield<HeaderDirtyFlag>;
 
@@ -992,6 +991,26 @@ public:
 					break;
 				default:
 					AVDECC_ASSERT(false, "UpdateIsStreaming flag should not be set for other types");
+					break;
+			}
+		}
+
+		if (dirtyFlags.test(HeaderDirtyFlag::UpdateChannelHasListenerMapping))
+		{
+			switch (node->type())
+			{
+				case Node::Type::InputChannel:
+				{
+					auto& listenerChannelNode = static_cast<ChannelNode&>(*node);
+					auto const& channelIdentification = listenerChannelNode.channelIdentification();
+					auto const hasPrimaryMapping = channelIdentification.channelConnectionIdentification.streamChannelIdentification.isValid();
+					auto const hasSecondaryMapping = channelIdentification.secondaryChannelConnectionIdentification.has_value() && channelIdentification.secondaryChannelConnectionIdentification->streamChannelIdentification.isValid();
+					listenerChannelNode.setHasPrimaryMapping(hasPrimaryMapping);
+					listenerChannelNode.setHasSecondaryMapping(hasSecondaryMapping);
+					break;
+				}
+				default:
+					AVDECC_ASSERT(false, "UpdateChannelHasListenerMapping flag should not be set for other types");
 					break;
 			}
 		}
@@ -2162,48 +2181,54 @@ public:
 
 				case Model::IntersectionData::Type::SingleChannel_SingleChannel:
 				{
-					auto const* const talkerChannelNode = static_cast<ChannelNode*>(intersectionData.talker);
+					//auto const* const talkerChannelNode = static_cast<ChannelNode*>(intersectionData.talker);
 					auto const* const listenerChannelNode = static_cast<ChannelNode*>(intersectionData.listener);
 
-					// get the stream indices
-					auto& channelConnectionManager = avdecc::ChannelConnectionManager::getInstance();
-					auto const streamConnectionIndices = channelConnectionManager.getStreamIndexPairUsedByAudioChannelConnection(talkerEntityID, talkerChannelNode->channelIdentification(), listenerEntityID, listenerChannelNode->channelIdentification());
-
-					if (!streamConnectionIndices.empty())
+					if (dirtyFlags.test(IntersectionDirtyFlag::UpdateConnected))
 					{
-						intersectionData.smartConnectableStreams.clear();
+						auto const& channelIdentification = listenerChannelNode->channelIdentification();
 						auto combinedFlags = Model::IntersectionData::Flags{};
+						auto atLeastOneConnected = false;
 						auto allConnected = true;
-						for (auto const& streamConnection : streamConnectionIndices)
+						// Check primary connection
 						{
-							auto talkerStreamIndex = streamConnection.first.streamIndex;
-							auto listenerStreamIndex = streamConnection.second.streamIndex;
-
-							auto const* talkerStreamNode = ModelPrivate::talkerStreamNode(talkerEntityID, talkerStreamIndex);
-							auto const* listenerStreamNode = ModelPrivate::listenerStreamNode(listenerEntityID, listenerStreamIndex);
-
-							combinedFlags |= computeStreamIntersectionFlags(talkerStreamNode, listenerStreamNode);
-
-							auto const talkerStream = la::avdecc::entity::model::StreamIdentification{ talkerEntityID, talkerStreamIndex };
-							auto const connected = hive::modelsLibrary::helper::isConnectedToTalker(talkerStream, listenerStreamNode->streamInputConnectionInformation());
+							// Are we only missing talker mappings (ie. stream connection but no talker mappings)?
+							if (channelIdentification.channelConnectionIdentification.streamIdentification.entityID.isValid() && !channelIdentification.channelConnectionIdentification.talkerClusterIdentification.isValid())
+							{
+								combinedFlags.set(Model::IntersectionData::Flag::NoTalkerPrimaryMappings);
+							}
+							// Is it fully connected (listener mappings + stream connection + talker mappings)?
+							auto const connected = channelIdentification.channelConnectionIdentification.isConnected();
 							allConnected &= connected;
+							atLeastOneConnected |= connected;
+						}
+						// Check redundant connection
+						if (channelIdentification.secondaryChannelConnectionIdentification)
+						{
+							// Are we only missing talker mappings (ie. stream connection but no talker mappings)?
+							if (channelIdentification.secondaryChannelConnectionIdentification->streamIdentification.entityID.isValid() && !channelIdentification.secondaryChannelConnectionIdentification->talkerClusterIdentification.isValid())
+							{
+								combinedFlags.set(Model::IntersectionData::Flag::NoTalkerSecondaryMappings);
+							}
+							// Is it fully connected (listener mappings + stream connection + talker mappings)?
+							auto const connected = channelIdentification.secondaryChannelConnectionIdentification->isConnected();
+							allConnected &= connected;
+							atLeastOneConnected |= connected;
 						}
 
 						intersectionData.flags = combinedFlags;
-
 						if (allConnected)
 						{
 							intersectionData.state = Model::IntersectionData::State::Connected;
 						}
-						else
+						else if (atLeastOneConnected)
 						{
 							intersectionData.state = Model::IntersectionData::State::PartiallyConnected;
 						}
-					}
-					else
-					{
-						intersectionData.flags = {};
-						intersectionData.state = Model::IntersectionData::State::NotConnected;
+						else
+						{
+							intersectionData.state = Model::IntersectionData::State::NotConnected;
+						}
 					}
 
 					break;
@@ -2338,12 +2363,13 @@ public:
 			auto const configurationIndex = configurationNode.descriptorIndex;
 
 			auto const isMilan = controlledEntity.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+			auto const milanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 			auto const isRegisteredUnsol = controlledEntity.isSubscribedToUnsolicitedNotifications();
 			auto const areUnsolSupported = controlledEntity.areUnsolicitedNotificationsSupported();
-			auto* entity = EntityNode::create(entityID, isMilan, isRegisteredUnsol, areUnsolSupported);
+			auto* entity = EntityNode::create(entityID, isMilan, milanCompatibilityVersion, isRegisteredUnsol, areUnsolSupported);
 			entity->setName(hive::modelsLibrary::helper::smartEntityName(controlledEntity));
 
-			auto const fillStreamOutputNode = [&controlledEntity](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamOutputNode, auto const& avbInterfaceNode)
+			auto const fillStreamOutputNode = [&controlledEntity, isMilan](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamOutputNode, auto const& avbInterfaceNode)
 			{
 				node.setName(hive::modelsLibrary::helper::outputStreamName(controlledEntity, streamIndex));
 				node.setStreamFormat(streamOutputNode.dynamicModel.streamFormat);
@@ -2355,19 +2381,73 @@ public:
 				if (streamOutputNode.dynamicModel.counters)
 				{
 					auto const& counters = *streamOutputNode.dynamicModel.counters;
+					try
 					{
-						auto const it = counters.find(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStart);
-						if (it != counters.end())
+						switch (counters.getCounterType())
 						{
-							node.setStreamStartCounter(it->second);
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+							{
+								auto const milan12Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+								{
+									if (auto const it = milan12Counters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart); it != milan12Counters.end())
+									{
+										node.setStreamStartCounter(it->second);
+									}
+								}
+								{
+									if (auto const it = milan12Counters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStop); it != milan12Counters.end())
+									{
+										node.setStreamStopCounter(it->second);
+									}
+								}
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+							{
+								if (isMilan)
+								{
+									auto const milan13Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+									{
+										if (auto const it = milan13Counters.find(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStart); it != milan13Counters.end())
+										{
+											node.setStreamStartCounter(it->second);
+										}
+									}
+									{
+										if (auto const it = milan13Counters.find(la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStop); it != milan13Counters.end())
+										{
+											node.setStreamStopCounter(it->second);
+										}
+									}
+									break;
+								}
+								// No guarantee about counter values for non-Milan devices
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+							{
+								auto const milanSignalPresenceCounters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+								{
+									if (auto const it = milanSignalPresenceCounters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart); it != milanSignalPresenceCounters.end())
+									{
+										node.setStreamStartCounter(it->second);
+									}
+								}
+								{
+									if (auto const it = milanSignalPresenceCounters.find(la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop); it != milanSignalPresenceCounters.end())
+									{
+										node.setStreamStopCounter(it->second);
+									}
+								}
+								break;
+							}
+							default:
+								break;
 						}
 					}
+					catch (std::invalid_argument const&)
 					{
-						auto const it = counters.find(la::avdecc::entity::StreamOutputCounterValidFlag::StreamStop);
-						if (it != counters.end())
-						{
-							node.setStreamStopCounter(it->second);
-						}
+						// Ignore
 					}
 				}
 			};
@@ -2440,9 +2520,10 @@ public:
 							auto const& staticModel = clusterNode.staticModel;
 							for (auto channel = (uint16_t)0u; channel < staticModel.channelCount; ++channel)
 							{
-								auto channelIdentification = avdecc::ChannelIdentification{ configurationNode.descriptorIndex, clusterIndex, channel, avdecc::ChannelConnectionDirection::InputToOutput, audioUnitIndex, streamPortIndex, streamPortNode.staticModel.baseCluster };
+								auto channelIdentification_old = avdecc::ChannelIdentification{ configurationNode.descriptorIndex, clusterIndex, channel, avdecc::ChannelConnectionDirection::InputToOutput, audioUnitIndex, streamPortIndex, streamPortNode.staticModel.baseCluster };
+								auto const clusterIdentification = la::avdecc::controller::model::ClusterIdentification{ clusterIndex, channel };
 
-								auto* outputChannel = ChannelNode::createOutputNode(*entity, channelIdentification);
+								auto* outputChannel = ChannelNode::createOutputNode(*entity, clusterIdentification, channelIdentification_old);
 								auto const clusterName = hive::modelsLibrary::helper::objectName(&controlledEntity, streamPortNode.audioClusters.at(clusterIndex));
 								auto const channelName = priv::clusterChannelName(clusterName, channel);
 								outputChannel->setName(channelName);
@@ -2476,9 +2557,10 @@ public:
 			auto const configurationIndex = configurationNode.descriptorIndex;
 
 			auto const isMilan = controlledEntity.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+			auto const milanCompatibilityVersion = controlledEntity.getMilanCompatibilityVersion();
 			auto const isRegisteredUnsol = controlledEntity.isSubscribedToUnsolicitedNotifications();
 			auto const areUnsolSupported = controlledEntity.areUnsolicitedNotificationsSupported();
-			auto* entity = EntityNode::create(entityID, isMilan, isRegisteredUnsol, areUnsolSupported);
+			auto* entity = EntityNode::create(entityID, isMilan, milanCompatibilityVersion, isRegisteredUnsol, areUnsolSupported);
 			entity->setName(hive::modelsLibrary::helper::smartEntityName(controlledEntity));
 
 			auto const fillStreamInputNode = [&controlledEntity](auto& node, auto const configurationIndex, auto const streamIndex, auto const avbInterfaceIndex, auto const& streamInputNode, auto const& avbInterfaceNode)
@@ -2582,12 +2664,20 @@ public:
 								auto const& staticModel = clusterNode.staticModel;
 								for (auto channel = (uint16_t)0u; channel < staticModel.channelCount; ++channel)
 								{
-									auto channelIdentification = avdecc::ChannelIdentification{ configurationNode.descriptorIndex, clusterIndex, channel, avdecc::ChannelConnectionDirection::InputToOutput, audioUnitIndex, streamPortIndex, streamPortNode.staticModel.baseCluster };
+									auto channelIdentification_old = avdecc::ChannelIdentification{ configurationNode.descriptorIndex, clusterIndex, channel, avdecc::ChannelConnectionDirection::InputToOutput, audioUnitIndex, streamPortIndex, streamPortNode.staticModel.baseCluster };
+									auto const clusterIdentification = la::avdecc::controller::model::ClusterIdentification{ clusterIndex, channel };
 
-									auto* inputChannel = ChannelNode::createInputNode(*entity, channelIdentification);
-									auto const clusterName = hive::modelsLibrary::helper::objectName(&controlledEntity, streamPortNode.audioClusters.at(clusterIndex));
-									auto const channelName = priv::clusterChannelName(clusterName, channel);
-									inputChannel->setName(channelName);
+									if (auto const channelIdentIt = configurationNode.channelConnections.find(clusterIdentification); channelIdentIt != configurationNode.channelConnections.end())
+									{
+										auto* inputChannel = ChannelNode::createInputNode(*entity, clusterIdentification, channelIdentification_old, channelIdentIt->second);
+										auto const clusterName = hive::modelsLibrary::helper::objectName(&controlledEntity, streamPortNode.audioClusters.at(clusterIndex));
+										auto const channelName = priv::clusterChannelName(clusterName, channel);
+										inputChannel->setName(channelName);
+									}
+									else
+									{
+										LOG_HIVE_ERROR(QString("Cannot find ChannelConnection for Input ClusterIndex=%1 for EntityID=%2").arg(clusterIdentification.clusterIndex).arg(hive::modelsLibrary::helper::uniqueIdentifierToString(entityID)));
+									}
 								}
 							}
 						}
@@ -2937,7 +3027,7 @@ public:
 		}
 	}
 
-	void handleUnsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed)
+	void handleUnsolicitedRegistrationChanged(la::avdecc::UniqueIdentifier const entityID, bool const isSubscribed, bool const /*triggeredByEntity*/)
 	{
 		if (auto* node = talkerNodeFromEntityID(entityID))
 		{
@@ -3183,10 +3273,7 @@ public:
 				{
 					listenerIntersectionDataChanged(node, true, true, dirtyFlags);
 				}
-				else
-				{
-					updateListenerIntersectionChannels(entityID, dirtyFlags, listener, node);
-				}
+				// Don't update intersection in Channel mode, a separate notification will be sent for each affected Channel
 			}
 			else
 			{
@@ -3374,25 +3461,98 @@ public:
 				{
 					auto changed = false;
 
-					for (auto const [flag, counter] : counters)
+					try
 					{
-						switch (flag)
+						switch (counters.getCounterType())
 						{
-							case la::avdecc::entity::StreamOutputCounterValidFlag::StreamStart:
-								if (node->setStreamStartCounter(counter))
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_12:
+							{
+								auto const milan12Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilan12>();
+								for (auto const [flag, counter] : milan12Counters)
 								{
-									changed = true;
+									switch (flag)
+									{
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStart:
+											if (node->setStreamStartCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilan12::StreamStop:
+											if (node->setStreamStopCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										default:
+											break;
+									}
 								}
 								break;
-							case la::avdecc::entity::StreamOutputCounterValidFlag::StreamStop:
-								if (node->setStreamStopCounter(counter))
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::IEEE17221_2021:
+							{
+								auto const isMilan = controlledEntity->getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::Milan);
+								if (isMilan)
 								{
-									changed = true;
+									auto const milan13Counters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlags17221>();
+									for (auto const [flag, counter] : milan13Counters)
+									{
+										switch (flag)
+										{
+											case la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStart:
+												if (node->setStreamStartCounter(counter))
+												{
+													changed = true;
+												}
+												break;
+											case la::avdecc::entity::StreamOutputCounterValidFlag17221::StreamStop:
+												if (node->setStreamStopCounter(counter))
+												{
+													changed = true;
+												}
+												break;
+											default:
+												break;
+										}
+									}
+									break;
+								}
+								// No guarantee about counter values for non-Milan devices
+								break;
+							}
+							case la::avdecc::entity::model::StreamOutputCounters::CounterType::Milan_SignalPresence:
+							{
+								auto const milanSignalPresenceCounters = counters.template getCounters<la::avdecc::entity::StreamOutputCounterValidFlagsMilanSignalPresence>();
+								for (auto const [flag, counter] : milanSignalPresenceCounters)
+								{
+									switch (flag)
+									{
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStart:
+											if (node->setStreamStartCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										case la::avdecc::entity::StreamOutputCounterValidFlagMilanSignalPresence::StreamStop:
+											if (node->setStreamStopCounter(counter))
+											{
+												changed = true;
+											}
+											break;
+										default:
+											break;
+									}
 								}
 								break;
+							}
 							default:
 								break;
 						}
+					}
+					catch (std::invalid_argument const&)
+					{
+						// Ignore
 					}
 
 					if (changed)
@@ -3549,9 +3709,9 @@ public:
 			{
 				if (auto* channelNode = talkerChannelNode(entityID, audioClusterIndex))
 				{
-					auto const& clusterNode = controlledEntity->getAudioClusterNode(configurationIndex, channelNode->clusterIndex());
+					auto const& clusterNode = controlledEntity->getAudioClusterNode(configurationIndex, channelNode->clusterIdentification().clusterIndex);
 					auto const clusterName = hive::modelsLibrary::helper::objectName(controlledEntity.get(), clusterNode);
-					auto const channelName = priv::clusterChannelName(clusterName, channelNode->channelIndex());
+					auto const channelName = priv::clusterChannelName(clusterName, channelNode->clusterIdentification().clusterChannel);
 					channelNode->setName(channelName);
 
 					// Only notify the view in CBR mode, ClusterName is not displayed in SBR mode
@@ -3563,9 +3723,9 @@ public:
 			{
 				if (auto* channelNode = listenerChannelNode(entityID, audioClusterIndex))
 				{
-					auto const& clusterNode = controlledEntity->getAudioClusterNode(configurationIndex, channelNode->clusterIndex());
+					auto const& clusterNode = controlledEntity->getAudioClusterNode(configurationIndex, channelNode->clusterIdentification().clusterIndex);
 					auto const clusterName = hive::modelsLibrary::helper::objectName(controlledEntity.get(), clusterNode);
-					auto const channelName = priv::clusterChannelName(clusterName, channelNode->channelIndex());
+					auto const channelName = priv::clusterChannelName(clusterName, channelNode->clusterIdentification().clusterChannel);
 					channelNode->setName(channelName);
 
 					listenerHeaderDataChanged(channelNode, false, {});
@@ -3579,19 +3739,54 @@ public:
 		}
 	}
 
-	// avdecc::ChannelConnectionManager slots
-	void handleListenerChannelConnectionsUpdate(std::set<std::pair<la::avdecc::UniqueIdentifier, avdecc::ChannelIdentification>> const& channels)
+	void handleChannelInputConnectionChanged(la::avdecc::UniqueIdentifier const entityID, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification)
 	{
-		auto const dirtyFlags = IntersectionDirtyFlags{ IntersectionDirtyFlag::UpdateConnected };
-
-		for (auto const& [entityID, channelInfo] : channels)
+		try
 		{
-			auto* listenerNode = listenerChannelNode(entityID, channelInfo.clusterIndex);
-
-			if (_mode == Model::Mode::Channel)
+			if (hasListenerCluster(entityID, clusterIdentification.clusterIndex))
 			{
-				listenerIntersectionDataChanged(listenerNode, true, false, dirtyFlags);
+				if (auto* channelNode = listenerChannelNode(entityID, clusterIdentification.clusterIndex))
+				{
+					auto headerFlags = HeaderDirtyFlags{};
+					auto intersectionFlags = IntersectionDirtyFlags{};
+					auto const& previousChannelIdentification = channelNode->channelIdentification();
+
+					// Listener mappings changed
+					auto const listenerMappingsChanged = previousChannelIdentification.channelConnectionIdentification.streamChannelIdentification != channeIdentification.channelConnectionIdentification.streamChannelIdentification || (previousChannelIdentification.secondaryChannelConnectionIdentification.has_value() != channeIdentification.secondaryChannelConnectionIdentification.has_value()) || (previousChannelIdentification.secondaryChannelConnectionIdentification.has_value() && channeIdentification.secondaryChannelConnectionIdentification.has_value() && previousChannelIdentification.secondaryChannelConnectionIdentification->streamChannelIdentification != channeIdentification.secondaryChannelConnectionIdentification->streamChannelIdentification);
+					if (listenerMappingsChanged)
+					{
+						headerFlags.set(HeaderDirtyFlag::UpdateChannelHasListenerMapping);
+					}
+
+					// Full Connection status changed, or talker mappings changed
+					auto const talkerMappingsChanged = previousChannelIdentification.channelConnectionIdentification.talkerClusterIdentification != channeIdentification.channelConnectionIdentification.talkerClusterIdentification || (previousChannelIdentification.secondaryChannelConnectionIdentification.has_value() != channeIdentification.secondaryChannelConnectionIdentification.has_value()) || (previousChannelIdentification.secondaryChannelConnectionIdentification.has_value() && channeIdentification.secondaryChannelConnectionIdentification.has_value() && previousChannelIdentification.secondaryChannelConnectionIdentification->talkerClusterIdentification != channeIdentification.secondaryChannelConnectionIdentification->talkerClusterIdentification);
+					if (previousChannelIdentification.isConnected() != channeIdentification.isConnected() || previousChannelIdentification.isPartiallyConnected() != channeIdentification.isPartiallyConnected() || talkerMappingsChanged)
+					{
+						intersectionFlags.set(IntersectionDirtyFlag::UpdateConnected);
+					}
+
+					// Update ChannelIdentification
+					channelNode->setChannelIdentification(channeIdentification);
+
+					// Notify view
+					if (_mode == Model::Mode::Channel)
+					{
+						if (!headerFlags.empty())
+						{
+							listenerHeaderDataChanged(channelNode, false, headerFlags);
+						}
+						if (!intersectionFlags.empty())
+						{
+							listenerIntersectionDataChanged(channelNode, true, false, intersectionFlags);
+						}
+					}
+				}
 			}
+		}
+		catch (...)
+		{
+			// Uncaught exception
+			AVDECC_ASSERT(false, "Uncaught exception");
 		}
 	}
 
