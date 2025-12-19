@@ -541,7 +541,7 @@ private:
 	{
 		emit streamOutputConnectionsChanged({ entity->getEntity().getEntityID(), streamIndex }, connections);
 	}
-	virtual void onChannelInputConnectionChanged(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification) noexcept override
+	virtual void onChannelInputConnectionChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::ClusterIdentification const& clusterIdentification, la::avdecc::controller::model::ChannelIdentification const& channeIdentification) noexcept override
 	{
 		emit channelInputConnectionChanged(entity->getEntity().getEntityID(), clusterIdentification, channeIdentification);
 	}

@@ -32,7 +32,7 @@ struct ProcessHelperBase
 	{
 		return {};
 	}
-	static bool isProcessRunning(ProcessID const pid) noexcept
+	static bool isProcessRunning(ProcessID const /*pid*/) noexcept
 	{
 		return {};
 	}
