@@ -134,7 +134,7 @@ public:
 	void save(QString const& filename, LoggerModel::SaveConfiguration const& saveConfiguration) const
 	{
 		QFile file(filename);
-		file.open(QIODevice::WriteOnly);
+		(void)file.open(QIODevice::WriteOnly);
 		QTextStream stream(&file);
 
 		for (auto const& entry : _entries)
