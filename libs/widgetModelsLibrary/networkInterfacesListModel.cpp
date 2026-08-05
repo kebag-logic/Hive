@@ -132,7 +132,22 @@ QVariant NetworkInterfacesListModel::data(QModelIndex const& index, int role) co
 			if (auto const optInterface = _model.networkInterface(static_cast<std::size_t>(index.row())))
 			{
 				auto const& intfc = (*optInterface).get();
-				return QString::fromStdString(intfc.name);
+				auto name = QString::fromStdString(intfc.name);
+				// Surface the VLAN a sub-interface is bound to. Tagging is done by the operating system on
+				// such an interface, so ATDECC frames are emitted untagged by us and carry this VLAN.
+				if (intfc.vlanID != 0u)
+				{
+					// Only spell out the tag protocol when it isn't plain 802.1Q, so the common case stays terse
+					if (intfc.vlanProtocol == 0x88a8u)
+					{
+						name += QString{ " (VLAN %1, 802.1ad)" }.arg(intfc.vlanID);
+					}
+					else
+					{
+						name += QString{ " (VLAN %1)" }.arg(intfc.vlanID);
+					}
+				}
+				return name;
 			}
 			break;
 		}
