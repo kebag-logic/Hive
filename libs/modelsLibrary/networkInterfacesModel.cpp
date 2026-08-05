@@ -100,7 +100,7 @@ private:
 				{
 					auto const count = _model->rowCount();
 					emit _model->beginInsertRows({}, count, count);
-					_interfaces.push_back(NetworkInterface{ intfc.id, intfc.alias, intfc.isEnabled, intfc.isConnected, intfc.type });
+					_interfaces.push_back(NetworkInterface{ intfc.id, intfc.alias, intfc.isEnabled, intfc.isConnected, intfc.type, intfc.vlanID, intfc.vlanProtocol });
 					emit _model->endInsertRows();
 				}
 			});

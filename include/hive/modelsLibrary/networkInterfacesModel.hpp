@@ -44,6 +44,8 @@ public:
 		bool isEnabled{ false };
 		bool isConnected{ false };
 		la::networkInterface::Interface::Type interfaceType{ la::networkInterface::Interface::Type::None };
+		std::uint16_t vlanID{ 0u }; /**< VLAN identifier if this is a VLAN sub-interface (the OS tags on our behalf), 0 otherwise */
+		std::uint16_t vlanProtocol{ 0u }; /**< Tag protocol identifier of the VLAN: 0x8100 (802.1Q) or 0x88a8 (802.1ad), 0 if not a VLAN sub-interface */
 	};
 
 	using Model = NetworkInterfacesAbstractListModel;
