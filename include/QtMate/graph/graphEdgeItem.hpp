@@ -19,13 +19,24 @@
 
 #pragma once
 
+#include <QColor>
 #include <QGraphicsPathItem>
 #include <QPen>
+#include <QString>
+
+#include <vector>
 
 namespace qtMate::graph
 {
 class GraphNodeItem;
 class GraphEdgeLabelItem;
+
+/** One line of the label of a GraphEdgeItem. */
+struct EdgeLabelLine
+{
+	QString text{};
+	QColor color{}; /**< Color of that line, an invalid color meaning the default text color of the current theme */
+};
 
 /**
 * @brief Edge connecting two GraphNodeItem in a QGraphicsScene.
@@ -33,7 +44,9 @@ class GraphEdgeLabelItem;
 *          to the top anchor of the downstream node, with an optional label near the downstream end.
 *          The label is a separate scene item drawn above all the edge lines (so it is never covered
 *          by nearby edges), using the palette text color over a translucent background plate, which
-*          keeps it readable in both light and dark themes.
+*          keeps it readable in both light and dark themes. Each line of the label may override that
+*          color, for a line carrying a status of its own (the caller is then responsible for picking
+*          a color readable on both themes).
 *          The path is automatically updated when either node moves.
 */
 class GraphEdgeItem : public QGraphicsPathItem
@@ -54,8 +67,8 @@ public:
 	GraphEdgeItem(GraphNodeItem* upstreamNode, GraphNodeItem* downstreamNode, QGraphicsItem* parent = nullptr);
 	virtual ~GraphEdgeItem() override;
 
-	/** Sets the label displayed near the downstream end of the edge, may contain multiple lines separated by '\n' (empty to hide). */
-	void setLabel(QString const& label);
+	/** Sets the lines of the label displayed near the downstream end of the edge (an empty list hides the label). */
+	void setLabel(std::vector<EdgeLabelLine> const& lines);
 
 	/** Sets the pen used to draw the edge line. */
 	void setLinePen(QPen const& pen);

@@ -137,7 +137,9 @@ private:
 	/** Displayable information of a link (an edge of the topology): shared by the edge labels and the aggregated rows. */
 	struct EdgeLinkInfo
 	{
-		QStringList labelParts{}; /**< Propagation delay, then stream count and bandwidth (only the available parts) */
+		QString delayText{}; /**< Propagation delay of the downstream entity (empty when not available) */
+		bool isDelaySuspicious{ false }; /**< The propagation delay is suspicious (null on a link that is not an internal bridge one), it must be displayed as a warning */
+		QString streamsText{}; /**< Stream count and accumulated bandwidth (empty when no stream transits through the link) */
 		QString tooltip{}; /**< Path discovery note and transiting streams list (without any interaction hint) */
 		bool hasStreams{ false };
 	};

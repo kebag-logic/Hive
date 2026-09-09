@@ -55,6 +55,7 @@ struct InterfaceInfo
 	std::optional<std::uint8_t> gptpDomainNumber{};
 	NetworkTopologyModel::ClockLockState clockLockState{ NetworkTopologyModel::ClockLockState::Unknown };
 	std::optional<std::uint32_t> propagationDelay{};
+	bool hasSuspiciousPropagationDelay{ false }; /**< Null propagation delay that is not explained by an internal bridge (see the bridged endpoint detection in recompute) */
 	std::vector<la::avdecc::UniqueIdentifier> asPath{};
 	la::avdecc::UniqueIdentifier internalBridgeClockIdentity{}; /**< Clock identity of the entity's internal bridge, for bridged endpoints (propagation delay == 0) */
 	std::uint64_t errorCounter{ 0u };
@@ -185,6 +186,7 @@ NetworkTopologyModel::Topology buildTopologyForNetwork(std::vector<InterfaceInfo
 		node.gptpDomainNumber = info.gptpDomainNumber;
 		node.clockLockState = info.clockLockState;
 		node.propagationDelay = info.propagationDelay;
+		node.hasSuspiciousPropagationDelay = info.hasSuspiciousPropagationDelay;
 		node.hasAsPath = info.asPath.size() >= 2;
 		node.errorCounter = info.errorCounter;
 
@@ -968,22 +970,52 @@ void NetworkTopologyModel::recompute() noexcept
 			info.propagationDelay = interfaceCache.propagationDelay;
 			info.asPath = interfaceCache.asPath;
 
-			// Bridged endpoint detection (same heuristic than the one validated in the field by other controllers):
-			// a null propagation delay means the interface is directly connected to a bridge embedded in the same unit,
-			// that internal bridge is the AsPath element adjacent to the entity and must not be drawn as an external bridge
-			if (info.propagationDelay && *info.propagationDelay == 0u && !info.asPath.empty())
+			interfaces.push_back(std::move(info));
+		}
+	}
+
+	// Bridged endpoint detection (same heuristic than the one validated in the field by other controllers): a null propagation delay means the interface is directly connected to a bridge embedded in the same unit, that internal bridge is the AsPath element adjacent to the entity and must not be drawn as an external bridge.
+	// Only such an internal link is expected to have a null propagation delay (a real link, however short, always has a measurable one), and entities do report a null delay on real links in the field, so the adjacent element is only accepted as an internal bridge when nothing contradicts it.
+	// Every other null propagation delay is suspicious: the entity keeps its real position in the topology and the delay is flagged, so it is reported to the user instead of silently moving the entity around (a delay oscillating between zero and a real value would otherwise keep changing the structure of the graph, forcing a full relayout at every change)
+	{
+		// Entities seeing each clock identity in their AsPath: a bridge embedded in a unit is only visible from that unit
+		auto entitiesSeeingIdentity = std::unordered_map<la::avdecc::UniqueIdentifier, std::set<la::avdecc::UniqueIdentifier>, la::avdecc::UniqueIdentifier::hash>{};
+		for (auto const& info : interfaces)
+		{
+			for (auto const& hopClockIdentity : info.asPath)
 			{
-				if (info.asPath.back() != info.clockIdentity)
-				{
-					info.internalBridgeClockIdentity = info.asPath.back();
-				}
-				else if (info.asPath.size() >= 2)
-				{
-					info.internalBridgeClockIdentity = info.asPath[info.asPath.size() - 2];
-				}
+				entitiesSeeingIdentity[hopClockIdentity].insert(info.entityID);
+			}
+		}
+
+		for (auto& info : interfaces)
+		{
+			if (!info.propagationDelay || *info.propagationDelay != 0u)
+			{
+				continue;
 			}
 
-			interfaces.push_back(std::move(info));
+			info.hasSuspiciousPropagationDelay = true;
+			if (info.asPath.size() < 2)
+			{
+				continue;
+			}
+			// Some entities append their own clock identity at the end of their AsPath, the element adjacent to the entity is then the one before it
+			auto const adjacentPosition = info.asPath.back() == info.clockIdentity ? info.asPath.size() - 2u : info.asPath.size() - 1u;
+			// The first element of the AsPath is the grandmaster, it never is an internal bridge: considering it internal would remove the only hop of the path, leaving the entity disconnected from its own clock domain and wrongly displayed as being the grandmaster itself
+			if (adjacentPosition < 1u)
+			{
+				continue;
+			}
+			// An element another entity also sees is a real network node shared by several units, not a bridge hidden inside this one
+			auto const& adjacentClockIdentity = info.asPath[adjacentPosition];
+			if (auto const it = entitiesSeeingIdentity.find(adjacentClockIdentity); it != entitiesSeeingIdentity.end() && it->second.size() > 1)
+			{
+				continue;
+			}
+
+			info.internalBridgeClockIdentity = adjacentClockIdentity;
+			info.hasSuspiciousPropagationDelay = false;
 		}
 	}
 

@@ -39,7 +39,8 @@ static constexpr auto LabelDistanceFromEnd = 30.0;
 * @brief Label of a GraphEdgeItem, as a dedicated top-level scene item.
 * @details Drawn above all the edge lines (see Z ordering) so the text is never covered by nearby edges.
 *          The text uses the palette text color over a translucent plate of the palette window color,
-*          making it readable over any line in both light and dark themes.
+*          making it readable over any line in both light and dark themes, each line being able to
+*          override that color.
 *          Lifetime is managed by the owning GraphEdgeItem, with mutual detach notifications since a
 *          QGraphicsScene destroys its items in an undefined order.
 */
@@ -67,12 +68,17 @@ public:
 		_edge = nullptr;
 	}
 
-	void setText(QString const& text)
+	void setLines(std::vector<EdgeLabelLine> const& lines)
 	{
-		if (text != _text)
+		if (lines.size() != _lines.size()
+				|| !std::equal(lines.begin(), lines.end(), _lines.begin(),
+						 [](auto const& lhs, auto const& rhs)
+						 {
+							 return lhs.text == rhs.text && lhs.color == rhs.color;
+						 }))
 		{
 			prepareGeometryChange();
-			_text = text;
+			_lines = lines;
 			update();
 		}
 	}
@@ -84,7 +90,7 @@ public:
 
 	virtual void paint(QPainter* painter, QStyleOptionGraphicsItem const* option, QWidget* /*widget*/) override
 	{
-		if (_text.isEmpty())
+		if (_lines.empty())
 		{
 			return;
 		}
@@ -94,22 +100,39 @@ public:
 		font.setPointSizeF(font.pointSizeF() * 0.85);
 		painter->setFont(font);
 
+		// The lines are laid out by hand (instead of a single multi line drawText) so each one can use its own color
+		auto const metrics = QFontMetricsF{ font };
+		auto const lineHeight = metrics.height();
+		auto const blockHeight = std::min(lineHeight * static_cast<double>(_lines.size()), boundingRect().height());
+		auto blockWidth = 0.0;
+		for (auto const& line : _lines)
+		{
+			blockWidth = std::max(blockWidth, metrics.horizontalAdvance(line.text));
+		}
+		// The item has a fixed bounding rect, painting outside of it would leave artifacts on the scene
+		blockWidth = std::min(blockWidth, boundingRect().width());
+
 		// Translucent plate of the background color, so the text detaches from the lines it crosses
-		auto const textRect = QFontMetricsF{ font }.boundingRect(boundingRect(), Qt::AlignCenter, _text);
+		auto const blockRect = QRectF{ -blockWidth / 2.0, -blockHeight / 2.0, blockWidth, blockHeight };
 		auto plateColor = option->palette.color(QPalette::Window);
 		plateColor.setAlpha(200);
 		painter->setPen(Qt::NoPen);
 		painter->setBrush(plateColor);
-		painter->drawRoundedRect(textRect.adjusted(-4.0, -1.0, 4.0, 1.0), 3.0, 3.0);
+		painter->drawRoundedRect(blockRect.adjusted(-4.0, -1.0, 4.0, 1.0), 3.0, 3.0);
 
-		// Palette text color: black on light theme, white on dark theme
-		painter->setPen(option->palette.color(QPalette::WindowText));
-		painter->drawText(boundingRect(), Qt::AlignCenter, _text);
+		// Default color is the palette text color (black on light theme, white on dark theme), overridden by the lines defining their own
+		auto const defaultColor = option->palette.color(QPalette::WindowText);
+		for (auto lineIndex = std::size_t{ 0u }; lineIndex < _lines.size(); ++lineIndex)
+		{
+			auto const& line = _lines[lineIndex];
+			painter->setPen(line.color.isValid() ? line.color : defaultColor);
+			painter->drawText(QRectF{ blockRect.left(), blockRect.top() + lineHeight * static_cast<double>(lineIndex), blockWidth, lineHeight }, Qt::AlignCenter, metrics.elidedText(line.text, Qt::ElideRight, blockWidth));
+		}
 	}
 
 private:
 	GraphEdgeItem* _edge{ nullptr };
-	QString _text{};
+	std::vector<EdgeLabelLine> _lines{};
 };
 
 GraphEdgeItem::GraphEdgeItem(GraphNodeItem* upstreamNode, GraphNodeItem* downstreamNode, QGraphicsItem* parent)
@@ -144,11 +167,11 @@ GraphEdgeItem::~GraphEdgeItem()
 	}
 }
 
-void GraphEdgeItem::setLabel(QString const& label)
+void GraphEdgeItem::setLabel(std::vector<EdgeLabelLine> const& lines)
 {
 	if (_labelItem)
 	{
-		_labelItem->setText(label);
+		_labelItem->setLines(lines);
 	}
 }
 

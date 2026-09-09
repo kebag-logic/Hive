@@ -4,6 +4,7 @@
 - [FAIT - A VERIFIER] Affiche incorrectement le nombre de streams d'un lien. 1 talker vers 50 listeners ne fait qu'un seul stream, pas 50
 - Ajouter un toggle button pour afficher ou non les streams de media clock
 - Trouver un moyen de layout+render uniquement une portion du graphe pour améliorer la lisibilité, par exemple quand on sélectionne un stream, on pourrait carément (temporairement) retirer du graphe toutes les entités/bridges qui ne font pas partie du stream (au lieu de simplement les fade out comme c'est le cas actuellement), peut etre via un bouton "Focus on selected stream" (ou simplement avec un double-clic sur un trait au lieu d'un clic simple). On conserve ESC (ou le bouton "clear stream highlight") pour revenir à l'affichage normal du graphe.
+- Ajouter un bouton "Lock" (actif par défaut) pour empêcher un clic sur un bloc de bouger librement ce dernier
 
 ## EventJournal
 

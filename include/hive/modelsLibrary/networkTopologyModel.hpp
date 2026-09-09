@@ -103,6 +103,7 @@ public:
 		std::optional<std::uint8_t> gptpDomainNumber{};
 		ClockLockState clockLockState{ ClockLockState::Unknown }; /**< Media clock lock state of the entity (entity level, duplicated on each interface node) */
 		std::optional<std::uint32_t> propagationDelay{}; /**< Propagation delay (nsec) between this interface and its upstream neighbor */
+		bool hasSuspiciousPropagationDelay{ false }; /**< True when the interface reports a null propagation delay that is not explained by a bridge embedded in the same unit: only such an internal link is expected to have a null delay, so the node is placed at its real position and the delay is reported as a warning */
 		bool hasAsPath{ false }; /**< True if the entity exposes a usable AsPath for this interface */
 		std::uint64_t errorCounter{ 0u }; /**< Aggregated entity level error counter (stream input errors + statistics errors), duplicated on each interface node of the entity */
 		bool isInterconnected{ false }; /**< True when this node reveals a likely interconnection between networks (severe cabling error for redundant networks) */

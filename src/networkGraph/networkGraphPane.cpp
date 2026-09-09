@@ -24,14 +24,17 @@
 #include <QtMate/graph/graphEdgeItem.hpp>
 #include <QtMate/graph/graphNodeItem.hpp>
 #include <QtMate/graph/treeLayout.hpp>
+#include <QtMate/material/color.hpp>
 
 #include <QFontMetricsF>
 #include <QGraphicsSceneContextMenuEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
+#include <QGuiApplication>
 #include <QMenu>
 #include <QPainter>
 #include <QStringList>
+#include <QStyleHints>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -73,6 +76,7 @@ auto const TextColor = QColor{ 0x212121 };
 auto const SecondaryTextColor = QColor{ 0x757575 };
 auto const GrandmasterColor = QColor{ 0xFFC107 };
 auto const ErrorColor = QColor{ 0xD32F2F };
+auto const WarningColor = QColor{ 0xE65100 }; /**< Material Orange 900, only usable inside the node boxes (opaque light plates), see backgroundWarningColor for the graph background */
 auto const ClockLockedColor = QColor{ 0x4CAF50 };
 auto const ClockUnlockedColor = QColor{ 0xF44336 };
 auto const ClockUnknownColor = QColor{ 0x9E9E9E };
@@ -91,6 +95,13 @@ QRectF borderRect(QSizeF const& nodeSize, QPen const& pen)
 {
 	auto const halfWidth = pen.widthF() / 2.0;
 	return QRectF{ QPointF{ 0.0, 0.0 }, nodeSize }.adjusted(halfWidth, halfWidth, -halfWidth, -halfWidth);
+}
+
+// Returns the warning color to use for the elements drawn directly over the application background (the edge labels), where the fixed colors of the node boxes don't apply.
+// Computed at display time because the application color scheme is unknown during static initialization, and because a dark orange is unreadable on a dark theme (a light one being unreadable on a light theme)
+QColor backgroundWarningColor()
+{
+	return qtMate::material::color::value(qtMate::material::color::Name::Orange, qtMate::material::color::isDarkColorScheme() ? qtMate::material::color::Shade::Shade300 : qtMate::material::color::Shade::Shade900);
 }
 
 QString formatBandwidth(std::uint64_t const bitsPerSecond)
@@ -164,8 +175,16 @@ QString buildEntityNodeTooltip(TopologyNode const& node)
 	}
 	if (node.propagationDelay)
 	{
-		// Escaped because of the '<' of the too-short distance display
-		tooltip += QString{ "<br>Propagation Delay: %1" }.arg(hive::modelsLibrary::helper::propagationDelayWithDistanceToString(*node.propagationDelay).toHtmlEscaped());
+		if (node.hasSuspiciousPropagationDelay)
+		{
+			// A distance is meaningless for a delay that cannot be trusted, only the raw value is displayed
+			tooltip += QString{ "<br><font color=\"%1\">Propagation Delay: %2 (suspicious, a null delay is only expected when the neighbor is a bridge embedded in the same unit)</font>" }.arg(backgroundWarningColor().name(), hive::modelsLibrary::helper::propagationDelayToString(*node.propagationDelay, false));
+		}
+		else
+		{
+			// Escaped because of the '<' of the too-short distance display
+			tooltip += QString{ "<br>Propagation Delay: %1" }.arg(hive::modelsLibrary::helper::propagationDelayWithDistanceToString(*node.propagationDelay).toHtmlEscaped());
+		}
 	}
 	if (!node.hasAsPath)
 	{
@@ -423,7 +442,9 @@ public:
 		int depth{ 0 }; /**< 0 for entities directly attached to the bridge, +1 per daisy chain hop */
 		std::optional<std::size_t> parentRow{}; /**< Row of the upstream entity for daisy chained entities */
 		// Link information of the uplink of the entity, driven by the pane (empty when hidden or not available)
-		QString linkText{};
+		QString linkDelayText{};
+		bool isLinkDelaySuspicious{ false }; /**< The propagation delay is suspicious (null on a link that is not an internal bridge one), it is displayed as a warning */
+		QString linkStreamsText{};
 		QString linkTooltip{};
 		// Interaction states, driven by the pane
 		bool selected{ false };
@@ -468,11 +489,13 @@ public:
 		update();
 	}
 
-	void setRowLinkInfo(std::size_t const row, QString const& linkText, QString const& linkTooltip)
+	void setRowLinkInfo(std::size_t const row, QString const& linkDelayText, bool const isLinkDelaySuspicious, QString const& linkStreamsText, QString const& linkTooltip)
 	{
-		if (linkText != _rows[row].linkText || linkTooltip != _rows[row].linkTooltip)
+		if (linkDelayText != _rows[row].linkDelayText || isLinkDelaySuspicious != _rows[row].isLinkDelaySuspicious || linkStreamsText != _rows[row].linkStreamsText || linkTooltip != _rows[row].linkTooltip)
 		{
-			_rows[row].linkText = linkText;
+			_rows[row].linkDelayText = linkDelayText;
+			_rows[row].isLinkDelaySuspicious = isLinkDelaySuspicious;
+			_rows[row].linkStreamsText = linkStreamsText;
 			_rows[row].linkTooltip = linkTooltip;
 			if (_hoveredRow == row)
 			{
@@ -790,15 +813,35 @@ private:
 		painter->setPen(TextColor);
 		auto const textLeft = plate.left() + 6.0;
 		auto const textWidth = rightEdge - textLeft;
-		auto const nameRect = row.linkText.isEmpty() ? QRectF{ textLeft, plate.top(), textWidth, plate.height() } : QRectF{ textLeft, plate.top() + 2.0, textWidth, 16.0 };
+		auto const hasLinkInfo = !row.linkDelayText.isEmpty() || !row.linkStreamsText.isEmpty();
+		auto const nameRect = hasLinkInfo ? QRectF{ textLeft, plate.top() + 2.0, textWidth, 16.0 } : QRectF{ textLeft, plate.top(), textWidth, plate.height() };
 		painter->drawText(nameRect, Qt::AlignLeft | Qt::AlignVCenter, QFontMetricsF{ nameFont }.elidedText(node.name, Qt::ElideMiddle, textWidth));
-		if (!row.linkText.isEmpty())
+		if (hasLinkInfo)
 		{
 			auto linkFont = baseFont;
 			linkFont.setPointSizeF(baseFont.pointSizeF() * 0.75);
 			painter->setFont(linkFont);
-			painter->setPen(SecondaryTextColor);
-			painter->drawText(QRectF{ textLeft, plate.top() + 18.0, textWidth, 13.0 }, Qt::AlignLeft | Qt::AlignVCenter, QFontMetricsF{ linkFont }.elidedText(row.linkText, Qt::ElideRight, textWidth));
+			// The propagation delay is drawn separately from the rest of the line, so a suspicious one can be displayed as a warning
+			auto const linkMetrics = QFontMetricsF{ linkFont };
+			auto linkLeft = textLeft;
+			auto const drawLinkPart = [&painter, &linkMetrics, &linkLeft, &plate, textLeft, textWidth](QString const& text, QColor const& color)
+			{
+				auto const availableWidth = textWidth - (linkLeft - textLeft);
+				if (text.isEmpty() || availableWidth <= 0.0)
+				{
+					return;
+				}
+				auto const elidedText = linkMetrics.elidedText(text, Qt::ElideRight, availableWidth);
+				painter->setPen(color);
+				painter->drawText(QRectF{ linkLeft, plate.top() + 18.0, availableWidth, 13.0 }, Qt::AlignLeft | Qt::AlignVCenter, elidedText);
+				linkLeft += linkMetrics.horizontalAdvance(elidedText);
+			};
+			drawLinkPart(row.linkDelayText, row.isLinkDelaySuspicious ? WarningColor : SecondaryTextColor);
+			if (!row.linkDelayText.isEmpty() && !row.linkStreamsText.isEmpty())
+			{
+				drawLinkPart(QString::fromUtf8(" \xC2\xB7 "), SecondaryTextColor);
+			}
+			drawLinkPart(row.linkStreamsText, SecondaryTextColor);
 		}
 	}
 
@@ -945,6 +988,25 @@ NetworkGraphPane::NetworkGraphPane(QWidget* parent)
 	auto* const layout = new QVBoxLayout{ this };
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->addWidget(_graphView);
+
+	// The elements drawn directly over the application background pick their color from the current color scheme, they have to be redecorated when the user switches theme (the opaque node boxes use fixed colors and are not affected)
+	connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this,
+		[this](Qt::ColorScheme const /*colorScheme*/)
+		{
+			// Don't touch the items when a scene rebuild is pending: it will create them with the new colors
+			if (_pendingSceneRebuild)
+			{
+				return;
+			}
+			if (isVisible())
+			{
+				refreshDecorations();
+			}
+			else
+			{
+				_pendingDecorationRefresh = true;
+			}
+		});
 
 	connect(_scene, &QGraphicsScene::selectionChanged, this,
 		[this]()
@@ -1289,11 +1351,14 @@ NetworkGraphPane::EdgeLinkInfo NetworkGraphPane::buildEdgeLinkInfo(std::size_t c
 	}
 	else
 	{
-		// Show the propagation delay of the downstream entity on its upstream link
+		// Show the propagation delay of the downstream entity on its upstream link.
+		// A null delay is normally not displayed (it means the entity is directly connected to a bridge embedded in the same unit), but a suspicious one is, as a warning
 		auto const& downstreamNode = _topology.nodes[edge.downstreamNodeIndex];
-		if (downstreamNode.type == hive::modelsLibrary::NetworkTopologyModel::NodeType::Entity && downstreamNode.propagationDelay && *downstreamNode.propagationDelay > 0u)
+		if (downstreamNode.type == hive::modelsLibrary::NetworkTopologyModel::NodeType::Entity && downstreamNode.propagationDelay && (*downstreamNode.propagationDelay > 0u || downstreamNode.hasSuspiciousPropagationDelay))
 		{
-			info.labelParts += hive::modelsLibrary::helper::propagationDelayToString(*downstreamNode.propagationDelay, _showDelayAsDistance);
+			info.isDelaySuspicious = downstreamNode.hasSuspiciousPropagationDelay;
+			// A distance is meaningless for a delay that cannot be trusted, only the raw value is displayed
+			info.delayText = hive::modelsLibrary::helper::propagationDelayToString(*downstreamNode.propagationDelay, _showDelayAsDistance && !info.isDelaySuspicious);
 		}
 	}
 
@@ -1318,7 +1383,7 @@ NetworkGraphPane::EdgeLinkInfo NetworkGraphPane::buildEdgeLinkInfo(std::size_t c
 		{
 			streamsText += QString{ " \xC2\xB7 %1" }.arg(formatBandwidth(reservedBandwidth));
 		}
-		info.labelParts += streamsText;
+		info.streamsText = streamsText;
 
 		// List the transiting stream connections in the tooltip (capped to keep it readable)
 		constexpr auto MaxTooltipStreams = std::size_t{ 15u };
@@ -1372,7 +1437,19 @@ void NetworkGraphPane::applyEdgeDecorations(std::size_t const edgeIndex)
 
 	// Labels can be hidden to unclutter the graph, the tooltips remain available.
 	// Latency on the first line, stream count and bandwidth on the second one (better readability when edges are close to each other)
-	edgeItem->setLabel(_showStreamInfo ? info.labelParts.join('\n') : QString{});
+	auto labelLines = std::vector<qtMate::graph::EdgeLabelLine>{};
+	if (_showStreamInfo)
+	{
+		if (!info.delayText.isEmpty())
+		{
+			labelLines.push_back(qtMate::graph::EdgeLabelLine{ info.delayText, info.isDelaySuspicious ? backgroundWarningColor() : QColor{} });
+		}
+		if (!info.streamsText.isEmpty())
+		{
+			labelLines.push_back(qtMate::graph::EdgeLabelLine{ info.streamsText, QColor{} });
+		}
+	}
+	edgeItem->setLabel(labelLines);
 	edgeItem->setToolTip(tooltip);
 	edgeItem->setLinePen(pen);
 	_edgeBasePens[edgeIndex] = pen;
@@ -1389,7 +1466,7 @@ void NetworkGraphPane::applyRowLinkDecorations(std::size_t const nodeIndex)
 	auto const uplinkEdge = _uplinkEdgeForNode[nodeIndex];
 	if (!uplinkEdge)
 	{
-		groupItem->setRowLinkInfo(*representation.row, {}, {});
+		groupItem->setRowLinkInfo(*representation.row, {}, false, {}, {});
 		return;
 	}
 	// The uplink of an aggregated entity has no edge item: its link information is displayed on the row itself,
@@ -1400,7 +1477,7 @@ void NetworkGraphPane::applyRowLinkDecorations(std::size_t const nodeIndex)
 	{
 		tooltip += QStringLiteral("<br><i>Left-click the connector left of the entity to highlight the stream paths, right-click for options</i>");
 	}
-	groupItem->setRowLinkInfo(*representation.row, _showStreamInfo ? info.labelParts.join(QString::fromUtf8(" \xC2\xB7 ")) : QString{}, tooltip);
+	groupItem->setRowLinkInfo(*representation.row, _showStreamInfo ? info.delayText : QString{}, info.isDelaySuspicious, _showStreamInfo ? info.streamsText : QString{}, tooltip);
 }
 
 void NetworkGraphPane::updateStatsText()
