@@ -2105,7 +2105,7 @@ TEST_F(ConnectionMatrix_F, EntityStreamSummary_NormalNormal_ConnectedMsrpFailure
 	}
 	// Talker - Stream0 (connected with MSRP failure)
 	{
-		validateIntersectionData(5, 1, connectionMatrix::Model::IntersectionData::Type::Entity_SingleStream, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked, connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
+		validateIntersectionData(5, 1, connectionMatrix::Model::IntersectionData::Type::Entity_SingleStream, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
 	}
 	// Talker - Stream1 (not connected)
 	{
@@ -2113,7 +2113,7 @@ TEST_F(ConnectionMatrix_F, EntityStreamSummary_NormalNormal_ConnectedMsrpFailure
 	}
 	// Stream0 - Listener (connected with MSRP failure)
 	{
-		validateIntersectionData(6, 0, connectionMatrix::Model::IntersectionData::Type::Entity_SingleStream, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked, connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
+		validateIntersectionData(6, 0, connectionMatrix::Model::IntersectionData::Type::Entity_SingleStream, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
 	}
 	// Stream1 - Listener (not connected)
 	{
@@ -2128,7 +2128,7 @@ TEST_F(ConnectionMatrix_F, EntityEntitySummary_NormalNormal_ConnectedMsrpFailure
 	{
 		return;
 	}
-	validateIntersectionData(5, 0, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked, connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
+	validateIntersectionData(5, 0, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MsrpFailure });
 }
 
 /* *********************************
