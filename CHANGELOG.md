@@ -33,9 +33,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - [Enhanced connection matrix red color with MSRP Failure status](https://github.com/christophe-calmejane/Hive/issues/149)
 - Vendor names now also resolved from the IEEE MA-M (OUI-28) and MA-S/IAB (OUI-36) registries, not just MA-L (OUI-24)
+- Entity connection summaries also report Channel connections that are only missing their Talker dynamic mappings
 
 ### Fixed
 - Channel Based Routing matrix displaying a Listener Channel as connected to every Channel of the Talker Entity, instead of the Talker Channel it is actually connected to
+- Entity connection summaries now computed in Channel Based Routing mode (Entity-Entity and Entity-Channel intersections were always displayed as not connected)
+- Channel Based Routing intersections no longer reporting the errors of the Stream connection carrying them (MSRP failure, wrong domain, stream format mismatch, interface down, latency error) nor their Media Locked state, in the matrix colors and in the tooltip
 - User feedback when failing to save the log file
 - [Localized strings now fetched from the configuration being inspected instead of the active one](https://github.com/christophe-calmejane/Hive/issues/178)
 

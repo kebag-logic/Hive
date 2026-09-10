@@ -75,6 +75,7 @@ static inline QColor getEntitySummaryBrushColor(Model::IntersectionData::State c
 	static auto const Yellow = color::value(color::Name::Amber, color::Shade::Shade400);
 	static auto const Blue = color::value(color::Name::Blue, color::Shade::Shade500);
 	static auto const Grey = color::value(color::Name::Gray, color::Shade::Shade600);
+	static auto const Lime = color::value(color::Name::Lime, color::Shade::Shade300);
 
 	auto brushColor = QColor{ White };
 
@@ -116,6 +117,14 @@ static inline QColor getEntitySummaryBrushColor(Model::IntersectionData::State c
 	{
 		brushColor = Yellow;
 	}
+	else if (flags.test(Model::IntersectionData::Flag::NoTalkerPrimaryMappings) || flags.test(Model::IntersectionData::Flag::NoTalkerSecondaryMappings))
+	{
+		// At least one of the summarized connections is missing Talker dynamic mappings
+		brushColor = Lime;
+		brushColor.setAlphaF(1.0);
+
+		return brushColor;
+	}
 	else
 	{
 		if (state == Model::IntersectionData::State::PartiallyConnected)
@@ -142,7 +151,7 @@ static inline QColor getConnectionBrushColor(Model::IntersectionData::State cons
 	static auto const Blue = color::value(color::Name::Blue, color::Shade::Shade500);
 	static auto const Purple = color::value(color::Name::Purple, color::Shade::Shade400);
 	static auto const Grey = color::value(color::Name::Gray, color::Shade::Shade600);
-	static auto const Lime = color::value(color::Name::Lime, color::Shade::Shade500);
+	static auto const Lime = color::value(color::Name::Lime, color::Shade::Shade300);
 	//static auto const Cyan = color::value(color::Name::Cyan, color::Shade::Shade400);
 	//static auto const Orange = color::value(color::Name::Orange, color::Shade::Shade600);
 
@@ -437,6 +446,7 @@ void drawCapabilities(QPainter* painter, QRect const& rect, Model::IntersectionD
 		case Model::IntersectionData::Type::Entity_Redundant:
 		case Model::IntersectionData::Type::Entity_RedundantStream:
 		case Model::IntersectionData::Type::Entity_SingleStream:
+		case Model::IntersectionData::Type::Entity_RedundantChannel:
 		case Model::IntersectionData::Type::Entity_SingleChannel:
 		{
 			if (drawEntitySummary)

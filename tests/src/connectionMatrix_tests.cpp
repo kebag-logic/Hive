@@ -28,6 +28,10 @@
 
 #include <QString>
 #include <QModelIndex>
+
+#include <string>
+#include <utility>
+#include <vector>
 #ifdef _WIN32
 #	pragma warning(push)
 #	pragma warning(disable : 4127) // Disable conditional expression is constant
@@ -80,13 +84,43 @@ public:
 		return _model;
 	}
 
+	// Returns a readable representation of the given Flags, so a failing expectation tells which ones actually differ
+	static std::string flagsToString(connectionMatrix::Model::IntersectionData::Flags const& flags)
+	{
+		static auto const s_FlagNames = std::vector<std::pair<connectionMatrix::Model::IntersectionData::Flag, char const*>>{
+			{ connectionMatrix::Model::IntersectionData::Flag::InterfaceDown, "InterfaceDown" },
+			{ connectionMatrix::Model::IntersectionData::Flag::WrongDomain, "WrongDomain" },
+			{ connectionMatrix::Model::IntersectionData::Flag::WrongFormatPossible, "WrongFormatPossible" },
+			{ connectionMatrix::Model::IntersectionData::Flag::WrongFormatImpossible, "WrongFormatImpossible" },
+			{ connectionMatrix::Model::IntersectionData::Flag::WrongFormatType, "WrongFormatType" },
+			{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked, "MediaLocked" },
+			{ connectionMatrix::Model::IntersectionData::Flag::LatencyError, "LatencyError" },
+			{ connectionMatrix::Model::IntersectionData::Flag::NoTalkerPrimaryMappings, "NoTalkerPrimaryMappings" },
+			{ connectionMatrix::Model::IntersectionData::Flag::NoTalkerSecondaryMappings, "NoTalkerSecondaryMappings" },
+			{ connectionMatrix::Model::IntersectionData::Flag::MsrpFailure, "MsrpFailure" },
+		};
+
+		auto result = std::string{};
+		for (auto const& [flag, name] : s_FlagNames)
+		{
+			if (flags.test(flag))
+			{
+				result += (result.empty() ? "" : " | ");
+				result += name;
+			}
+		}
+
+		return result.empty() ? "<none>" : result;
+	}
+
 	void validateIntersectionData(int const talkerSection, int const listenerSection, connectionMatrix::Model::IntersectionData::Type const intersectionType, connectionMatrix::Model::IntersectionData::State const intersectionState, connectionMatrix::Model::IntersectionData::Flags const intersectionFlags) noexcept
 	{
 		auto& model = getModel();
 		auto const& data = model.intersectionData(model.getIntersectionIndex(talkerSection, listenerSection));
-		ASSERT_EQ(intersectionType, data.type);
-		EXPECT_EQ(intersectionState, data.state);
-		EXPECT_TRUE((intersectionFlags == data.flags));
+		auto const location = ::testing::Message{} << "Intersection [talker " << talkerSection << ", listener " << listenerSection << "]";
+		ASSERT_EQ(intersectionType, data.type) << location;
+		EXPECT_EQ(intersectionState, data.state) << location;
+		EXPECT_EQ(flagsToString(intersectionFlags), flagsToString(data.flags)) << location;
 	}
 
 private:
@@ -2143,12 +2177,15 @@ TEST_F(ConnectionMatrix_F, SingleChannelSingleChannel_NormalNormal_ConnectedNoEr
 		return;
 	}
 	// Each Channel of the Talker is connected to the Channel of the same index of the Listener, and to that one only
+	// A connected Channel inherits the state of the Stream carrying it, which is Media Locked here (same flag as the Stream intersections of the same file)
 	for (auto talkerChannel = 1; talkerChannel <= 8; ++talkerChannel)
 	{
 		for (auto listenerChannel = 1; listenerChannel <= 8; ++listenerChannel)
 		{
-			auto const expectedState = talkerChannel == listenerChannel ? connectionMatrix::Model::IntersectionData::State::Connected : connectionMatrix::Model::IntersectionData::State::NotConnected;
-			validateIntersectionData(9 + talkerChannel, listenerChannel, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, expectedState, connectionMatrix::Model::IntersectionData::Flags{});
+			auto const isSameChannel = talkerChannel == listenerChannel;
+			auto const expectedState = isSameChannel ? connectionMatrix::Model::IntersectionData::State::Connected : connectionMatrix::Model::IntersectionData::State::NotConnected;
+			auto const expectedFlags = isSameChannel ? connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked } : connectionMatrix::Model::IntersectionData::Flags{};
+			validateIntersectionData(9 + talkerChannel, listenerChannel, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, expectedState, expectedFlags);
 		}
 	}
 }
@@ -2162,12 +2199,15 @@ TEST_F(ConnectionMatrix_F, SingleChannelSingleChannel_RedundantRedundant_Connect
 		return;
 	}
 	// Only the primary Stream is connected, so each Channel of the Talker is partially connected to the Channel of the same index of the Listener, and to that one only
+	// A connected Channel inherits the state of the Stream carrying it, which is Media Locked here (same flag as the Stream intersections of the same file)
 	for (auto talkerChannel = 1; talkerChannel <= 8; ++talkerChannel)
 	{
 		for (auto listenerChannel = 1; listenerChannel <= 8; ++listenerChannel)
 		{
-			auto const expectedState = talkerChannel == listenerChannel ? connectionMatrix::Model::IntersectionData::State::PartiallyConnected : connectionMatrix::Model::IntersectionData::State::NotConnected;
-			validateIntersectionData(9 + talkerChannel, listenerChannel, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, expectedState, connectionMatrix::Model::IntersectionData::Flags{});
+			auto const isSameChannel = talkerChannel == listenerChannel;
+			auto const expectedState = isSameChannel ? connectionMatrix::Model::IntersectionData::State::PartiallyConnected : connectionMatrix::Model::IntersectionData::State::NotConnected;
+			auto const expectedFlags = isSameChannel ? connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked } : connectionMatrix::Model::IntersectionData::Flags{};
+			validateIntersectionData(9 + talkerChannel, listenerChannel, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, expectedState, expectedFlags);
 		}
 	}
 }
@@ -2181,10 +2221,98 @@ TEST_F(ConnectionMatrix_F, SingleChannelSingleChannel_NormalRedundant_ConnectedN
 		return;
 	}
 	// The Talker only has a dynamic mapping for its first Channel, connected to the first Channel of the Listener
-	validateIntersectionData(1, 10, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{});
+	// That Channel flows through the Redundant Stream Pair of the Listener, so it inherits its errors (same flags as the Redundant_SingleStream intersection of the same file)
+	validateIntersectionData(1, 10, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::InterfaceDown, connectionMatrix::Model::IntersectionData::Flag::MediaLocked });
 	validateIntersectionData(2, 10, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
 	// The Streams are connected but the Talker has no dynamic mapping for the other Channels of the Listener, so all the Channels of that Talker are flagged as candidates
 	validateIntersectionData(1, 11, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::NoTalkerPrimaryMappings, connectionMatrix::Model::IntersectionData::Flag::NoTalkerSecondaryMappings });
 	// The last Channel of the Listener has no dynamic mapping at all, so it's not connected to any Stream and must not be flagged
 	validateIntersectionData(1, 17, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+}
+
+TEST_F(ConnectionMatrix_F, EntitySingleChannelSummary_NormalNormal_ConnectedNoError_ConnectedNoError)
+{
+	getModel().setMode(connectionMatrix::Model::Mode::Channel);
+	loadNetworkState("data/connectionMatrix/9-Normal_Normal-ConnectedNoError_ConnectedNoError.json");
+	if (HasFatalFailure())
+	{
+		return;
+	}
+	// All the Channels of the Talker are connected to the Listener, and Media Locked (same flag as the Stream summaries of the same file)
+	auto const mediaLocked = connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked };
+	validateIntersectionData(9, 0, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::Connected, mediaLocked);
+	for (auto channel = 1; channel <= 8; ++channel)
+	{
+		// Talker Entity against each Listener Channel
+		validateIntersectionData(9, channel, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, mediaLocked);
+		// Each Talker Channel against the Listener Entity
+		validateIntersectionData(9 + channel, 0, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, mediaLocked);
+	}
+	// Nothing is connected the other way around
+	validateIntersectionData(0, 9, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+	validateIntersectionData(0, 10, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+	validateIntersectionData(1, 9, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+}
+
+TEST_F(ConnectionMatrix_F, EntitySingleChannelSummary_RedundantRedundant_ConnectedNoError_LinkDown)
+{
+	getModel().setMode(connectionMatrix::Model::Mode::Channel);
+	loadNetworkState("data/connectionMatrix/16-Redundant_Redundant-ConnectedNoError_LinkDown.json");
+	if (HasFatalFailure())
+	{
+		return;
+	}
+	// Only the primary Stream is connected, so every Channel connection is partial and so are the summaries (same state and flag as the Stream summaries of the same file)
+	auto const mediaLocked = connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MediaLocked };
+	validateIntersectionData(9, 0, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::PartiallyConnected, mediaLocked);
+	validateIntersectionData(9, 1, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::PartiallyConnected, mediaLocked);
+	validateIntersectionData(10, 0, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::PartiallyConnected, mediaLocked);
+}
+
+TEST_F(ConnectionMatrix_F, EntitySingleChannelSummary_NormalRedundant_ConnectedNoError_ConnectedLinkDown)
+{
+	getModel().setMode(connectionMatrix::Model::Mode::Channel);
+	loadNetworkState("data/connectionMatrix/26-Normal_Redundant-ConnectedNoError_ConnectedLinkDown.json");
+	if (HasFatalFailure())
+	{
+		return;
+	}
+	auto const noTalkerMappings = connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::NoTalkerPrimaryMappings, connectionMatrix::Model::IntersectionData::Flag::NoTalkerSecondaryMappings };
+	auto const connectionErrors = connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::InterfaceDown, connectionMatrix::Model::IntersectionData::Flag::MediaLocked };
+	auto noTalkerMappingsAndConnectionErrors = noTalkerMappings;
+	noTalkerMappingsAndConnectionErrors |= connectionErrors;
+	// The first Channel of the Listener is fully connected, and inherits the errors of the Streams carrying it
+	validateIntersectionData(0, 10, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, connectionErrors);
+	// The other ones only miss the Talker dynamic mappings, which the summaries must report
+	validateIntersectionData(0, 11, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, noTalkerMappings);
+	validateIntersectionData(1, 9, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, noTalkerMappingsAndConnectionErrors);
+	validateIntersectionData(2, 9, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, noTalkerMappings);
+	validateIntersectionData(0, 9, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::Connected, noTalkerMappingsAndConnectionErrors);
+	// The last Channel of the Listener is not connected to any Stream, so it must not be flagged
+	validateIntersectionData(0, 17, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+}
+
+
+TEST_F(ConnectionMatrix_F, SingleChannelSingleChannel_NormalNormal_ConnectedMsrpFailure_NoError)
+{
+	getModel().setMode(connectionMatrix::Model::Mode::Channel);
+	loadNetworkState("data/connectionMatrix/40-Normal_Normal-ConnectedMsrpFailure_NoError.json");
+	if (HasFatalFailure())
+	{
+		return;
+	}
+	auto const msrpFailure = connectionMatrix::Model::IntersectionData::Flags{ connectionMatrix::Model::IntersectionData::Flag::MsrpFailure };
+	// The Stream carrying the Channel connection is in MSRP Failure, so the Channel intersection reports it, exactly like the Stream intersection of the same file does
+	validateIntersectionData(10, 1, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, msrpFailure);
+	// A Channel that is not connected reports nothing
+	validateIntersectionData(11, 1, connectionMatrix::Model::IntersectionData::Type::SingleChannel_SingleChannel, connectionMatrix::Model::IntersectionData::State::NotConnected, connectionMatrix::Model::IntersectionData::Flags{});
+	// Summaries report it as well
+	validateIntersectionData(9, 1, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, msrpFailure);
+	validateIntersectionData(10, 0, connectionMatrix::Model::IntersectionData::Type::Entity_SingleChannel, connectionMatrix::Model::IntersectionData::State::Connected, msrpFailure);
+	validateIntersectionData(9, 0, connectionMatrix::Model::IntersectionData::Type::Entity_Entity, connectionMatrix::Model::IntersectionData::State::Connected, msrpFailure);
+
+	// The tooltip gives the detailed failure code of the Stream carrying the Channel connection
+	auto& model = getModel();
+	auto const tooltip = model.data(model.getIntersectionIndex(10, 1), Qt::ToolTipRole).toString();
+	EXPECT_TRUE(tooltip.contains("MSRP Failure: Insufficient Bandwidth")) << "Actual tooltip: " << tooltip.toStdString();
 }

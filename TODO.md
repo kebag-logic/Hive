@@ -34,6 +34,7 @@
 - GroupName issue if it's set to "语语语语语语语语语语语语语语语语语语语语语|" (a value is being added at the end of the string)
 - If a Talker Stream is in Waiting status and we connect a new listener, it automatically goes into NonWaiting status because we are always sending the connection request without taking Wait flag into account
 - ProtocolInterface loaded multiple times during launch (pcap at least)
+- Le param "Collapsed by default" ne fonctionne pas pour la vue CBR
 
 # TO BE SORTED
 - Afficher la liste des streams formats tels qu'ils sont retournés par l'entité, et optimiser la liste dans la combobox pour aggréger les up-to avec les autres (si on a up-to 8, ne pas afficher 1, 2, 4, 6...)

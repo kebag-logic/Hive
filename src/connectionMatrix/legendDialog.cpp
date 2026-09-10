@@ -150,6 +150,7 @@ LegendDialog::LegendDialog(qtMate::material::color::Name const& colorName, bool 
 		{ "At least one Stream/Channel is connected but has different input and output stream format", Model::IntersectionData::Type::Entity_SingleStream, Model::IntersectionData::State::Connected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::WrongFormatPossible }, false, "Change the stream format on the listener (or the talker)" },
 		{ "At least one Stream/Channel is connected but at least one Network Interface is down", Model::IntersectionData::Type::Entity_SingleStream, Model::IntersectionData::State::Connected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::InterfaceDown }, false, "" },
 		{ "At least one Stream/Channel is connected but at least one Redundant Stream Pair is partially connected", Model::IntersectionData::Type::Entity_SingleStream, Model::IntersectionData::State::PartiallyConnected, Model::IntersectionData::Flags{}, false, "" },
+		{ "At least one Channel connection is missing Talker dynamic mappings", Model::IntersectionData::Type::Entity_SingleChannel, Model::IntersectionData::State::NotConnected, Model::IntersectionData::Flags{ Model::IntersectionData::Flag::NoTalkerPrimaryMappings, Model::IntersectionData::Flag::NoTalkerSecondaryMappings }, false, "Add talker dynamic mappings" },
 	};
 
 	Sections connectionColorCodeSections = {
