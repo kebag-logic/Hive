@@ -23,6 +23,7 @@
 #include "avdecc/channelConnectionManager.hpp"
 
 #include <optional>
+#include <unordered_map>
 
 namespace connectionMatrix
 {
@@ -300,6 +301,13 @@ public:
 	// Cached data from the controller
 	la::avdecc::entity::model::StreamFormat streamFormat() const noexcept;
 	la::avdecc::entity::model::StreamFormats const& streamFormats() const noexcept;
+	/**
+	* @brief Returns true if one of the supported formats of this Stream can carry the given Talker StreamFormat.
+	* @details The underlying computation instantiates a StreamFormatInfo for each supported format, which is far too expensive to redo for every intersection of the matrix, so the result is cached per Talker StreamFormat.
+	* @param[in] talkerFormat The StreamFormat of the Talker to match.
+	* @return True if a matching format was found.
+	*/
+	bool hasFormatMatchingTalkerFormat(la::avdecc::entity::model::StreamFormat const talkerFormat) const noexcept;
 	la::avdecc::UniqueIdentifier const& grandMasterID() const noexcept;
 	std::uint8_t const& grandMasterDomain() const noexcept;
 	la::avdecc::controller::ControlledEntity::InterfaceLinkStatus const& interfaceLinkStatus() const noexcept;
@@ -351,6 +359,7 @@ protected:
 	la::avdecc::entity::model::StreamInputConnectionInfo _streamInputConnectionInfo{};
 	Node::TriState _lockedState{ Node::TriState::Unknown }; // StreamInput only
 	bool _isStreaming{ false }; // StreamOutput only
+	mutable std::unordered_map<la::avdecc::entity::model::StreamFormat::value_type, bool> _matchingTalkerFormats{}; // Cache for hasFormatMatchingTalkerFormat(), invalidated by setStreamFormats()
 };
 
 class ChannelNode : public Node

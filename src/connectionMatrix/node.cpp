@@ -498,6 +498,26 @@ void StreamNode::setStreamFormat(la::avdecc::entity::model::StreamFormat const s
 void StreamNode::setStreamFormats(la::avdecc::entity::model::StreamFormats const& streamFormats) noexcept
 {
 	_streamFormats = streamFormats;
+	_matchingTalkerFormats.clear();
+}
+
+bool StreamNode::hasFormatMatchingTalkerFormat(la::avdecc::entity::model::StreamFormat const talkerFormat) const noexcept
+{
+	auto const [it, inserted] = _matchingTalkerFormats.try_emplace(talkerFormat.getValue(), false);
+
+	if (inserted)
+	{
+		auto const bestFormat = la::avdecc::controller::Controller::chooseBestStreamFormat(_streamFormats, talkerFormat,
+			[](bool const isDesiredClockSync, bool const isAvailableClockSync)
+			{
+				// We only refuse Async Talker (desired) with Sync Listener (available), accept everything else
+				return isDesiredClockSync || !isAvailableClockSync;
+			});
+
+		it->second = bestFormat.isValid();
+	}
+
+	return it->second;
 }
 
 void StreamNode::setGrandMasterID(la::avdecc::UniqueIdentifier const grandMasterID) noexcept

@@ -1870,7 +1870,7 @@ public:
 						auto const talkerStreamFormat = talkerStreamNode->streamFormat();
 						auto const listenerStreamFormat = listenerStreamNode->streamFormat();
 						info.isFormatError = !la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(listenerStreamFormat, talkerStreamFormat);
-						info.isFormatImpossible = !hasMatchingFormat(listenerStreamNode->streamFormats(), talkerStreamFormat);
+						info.isFormatImpossible = !listenerStreamNode->hasFormatMatchingTalkerFormat(talkerStreamFormat);
 						info.isDifferentMediaClockFormat = la::avdecc::controller::Controller::isMediaClockStreamFormat(talkerStreamFormat) != la::avdecc::controller::Controller::isMediaClockStreamFormat(listenerStreamFormat);
 
 						intersectionData.smartConnectableStreams.push_back(Model::IntersectionData::SmartConnectableStream{ { talkerStreamNode->entityID(), talkerStreamNode->streamIndex() }, { listenerStreamNode->entityID(), listenerStreamNode->streamIndex() }, isConnectedToTalker, isFastConnectingToTalker });
@@ -2027,7 +2027,7 @@ public:
 							auto const* listenerStreamInputConnectionInfo = static_cast<la::avdecc::entity::model::StreamInputConnectionInfo const*>(nullptr);
 							auto talkerStreamFormat = la::avdecc::entity::model::StreamFormat{};
 							auto listenerStreamFormat = la::avdecc::entity::model::StreamFormat{};
-							auto listenerStreamFormats = la::avdecc::entity::model::StreamFormats{};
+							auto const* listenerFormatsStreamNode = static_cast<StreamNode const*>(nullptr);
 							auto isListenerLocked = false;
 							auto isListenerLatencyError = false;
 							auto isListenerMsrpFailure = false;
@@ -2042,7 +2042,7 @@ public:
 								listenerStreamInputConnectionInfo = &nonRedundantStreamNode->streamInputConnectionInformation();
 								talkerStreamFormat = redundantStreamNode->streamFormat();
 								listenerStreamFormat = nonRedundantStreamNode->streamFormat();
-								listenerStreamFormats = nonRedundantStreamNode->streamFormats();
+								listenerFormatsStreamNode = nonRedundantStreamNode;
 								isListenerLocked = nonRedundantStreamNode->lockedState() == Node::TriState::True;
 								isListenerLatencyError = nonRedundantStreamNode->isLatencyError();
 								isListenerMsrpFailure = nonRedundantStreamNode->isMsrpFailure();
@@ -2056,7 +2056,7 @@ public:
 								listenerStreamInputConnectionInfo = &redundantStreamNode->streamInputConnectionInformation();
 								talkerStreamFormat = nonRedundantStreamNode->streamFormat();
 								listenerStreamFormat = redundantStreamNode->streamFormat();
-								listenerStreamFormats = redundantStreamNode->streamFormats();
+								listenerFormatsStreamNode = redundantStreamNode;
 								isListenerLocked = redundantStreamNode->lockedState() == Node::TriState::True;
 								isListenerLatencyError = redundantStreamNode->isLatencyError();
 								isListenerMsrpFailure = redundantStreamNode->isMsrpFailure();
@@ -2076,7 +2076,7 @@ public:
 							info.isInterfaceDown = isTalkerInterfaceDown || isListenerInterfaceDown;
 							info.isDomainError = !isSameDomain(*redundantStreamNode, *nonRedundantStreamNode);
 							info.isFormatError = !la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(listenerStreamFormat, talkerStreamFormat);
-							info.isFormatImpossible = !hasMatchingFormat(listenerStreamFormats, talkerStreamFormat);
+							info.isFormatImpossible = !listenerFormatsStreamNode->hasFormatMatchingTalkerFormat(talkerStreamFormat);
 							info.isDifferentMediaClockFormat = la::avdecc::controller::Controller::isMediaClockStreamFormat(talkerStreamFormat) != la::avdecc::controller::Controller::isMediaClockStreamFormat(listenerStreamFormat);
 
 							if (!info.isDomainError || connectableStream.isConnected || connectableStream.isFastConnecting)
@@ -2402,18 +2402,6 @@ public:
 		return lhs.grandMasterID() == rhs.grandMasterID() && lhs.grandMasterDomain() == rhs.grandMasterDomain();
 	}
 
-	static bool hasMatchingFormat(la::avdecc::entity::model::StreamFormats const& listenerFormats, la::avdecc::entity::model::StreamFormat const talkerFormat) noexcept
-	{
-		auto const bestFormat = la::avdecc::controller::Controller::chooseBestStreamFormat(listenerFormats, talkerFormat,
-			[](bool const isDesiredClockSync, bool const isAvailableClockSync)
-			{
-				// We only refuse Async Talker (desired) with Sync Listener (available), accept everything else
-				return isDesiredClockSync || !isAvailableClockSync;
-			});
-
-		return bestFormat.isValid();
-	}
-
 	static void updateInterfaceDownFlag(Model::IntersectionData::Flags& flags, StreamNode const* const talkerStreamNode, StreamNode const* const listenerStreamNode) noexcept
 	{
 		auto const talkerInterfaceLinkStatus = talkerStreamNode->interfaceLinkStatus();
@@ -2455,7 +2443,7 @@ public:
 		}
 		else
 		{
-			if (hasMatchingFormat(listenerStreamNode->streamFormats(), talkerStreamFormat))
+			if (listenerStreamNode->hasFormatMatchingTalkerFormat(talkerStreamFormat))
 			{
 				flags.set(Model::IntersectionData::Flag::WrongFormatPossible);
 			}
@@ -2510,7 +2498,7 @@ public:
 		auto const talkerStreamFormat = talkerStreamNode->streamFormat();
 		auto const listenerStreamFormat = listenerStreamNode->streamFormat();
 		info.isFormatError = !la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(listenerStreamFormat, talkerStreamFormat);
-		info.isFormatImpossible = !hasMatchingFormat(listenerStreamNode->streamFormats(), talkerStreamFormat);
+		info.isFormatImpossible = !listenerStreamNode->hasFormatMatchingTalkerFormat(talkerStreamFormat);
 		info.isDifferentMediaClockFormat = la::avdecc::controller::Controller::isMediaClockStreamFormat(talkerStreamFormat) != la::avdecc::controller::Controller::isMediaClockStreamFormat(listenerStreamFormat);
 
 		return info;
@@ -4315,21 +4303,46 @@ private:
 		}
 	}
 
-	// Recomputes (according to dirtyFlags) intersection data for talkerSection and listenerSection and notifies that it has changed
-	void intersectionDataChanged(int const talkerSection, int const listenerSection, IntersectionDirtyFlags const dirtyFlags)
+	// Recomputes (according to dirtyFlags) intersection data for talkerSection and listenerSection, without notifying the view
+	void updateIntersectionData(int const talkerSection, int const listenerSection, IntersectionDirtyFlags const dirtyFlags)
 	{
-		Q_Q(Model);
-
 		auto& data = _intersectionData[talkerSection][listenerSection];
 
 		computeIntersectionData(data, dirtyFlags);
 
-		auto const index = createIndex(talkerSection, listenerSection);
-		emit q->dataChanged(index, index);
-
 #if ENABLE_CONNECTION_MATRIX_HIGHLIGHT_DATA_CHANGED
 		highlightIntersection(talkerSection, listenerSection);
 #endif
+	}
+
+	// Notifies that the complete intersection line of the given talkerSection has changed
+	// A single coalesced dataChanged for the whole line: per-cell emissions don't scale (each one may rebuild the whole macOS accessibility table)
+	void notifyTalkerLineDataChanged(int const talkerSection)
+	{
+		Q_Q(Model);
+
+		auto const listenerCount = static_cast<int>(_listenerNodes.size());
+		if (listenerCount == 0)
+		{
+			return;
+		}
+
+		emit q->dataChanged(createIndex(talkerSection, 0), createIndex(talkerSection, listenerCount - 1));
+	}
+
+	// Notifies that the complete intersection line of the given listenerSection has changed
+	// A single coalesced dataChanged for the whole line: per-cell emissions don't scale (each one may rebuild the whole macOS accessibility table)
+	void notifyListenerLineDataChanged(int const listenerSection)
+	{
+		Q_Q(Model);
+
+		auto const talkerCount = static_cast<int>(_talkerNodes.size());
+		if (talkerCount == 0)
+		{
+			return;
+		}
+
+		emit q->dataChanged(createIndex(0, listenerSection), createIndex(talkerCount - 1, listenerSection));
 	}
 
 	// Recomputes talker intersection data, possibily recomputing its parent and/or children according to desired dirtyFlags
@@ -4361,8 +4374,9 @@ private:
 		// Then, update the node intersection
 		for (auto listenerSection = static_cast<int>(_listenerNodes.size()); listenerSection > 0; --listenerSection)
 		{
-			intersectionDataChanged(talkerSection, listenerSection - 1, dirtyFlags);
+			updateIntersectionData(talkerSection, listenerSection - 1, dirtyFlags);
 		}
+		notifyTalkerLineDataChanged(talkerSection);
 
 		// Finally, recursively update the parents
 		if (andParents)
@@ -4400,8 +4414,9 @@ private:
 		auto const listenerSection = listenerNodeSection(listener);
 		for (auto talkerSection = static_cast<int>(_talkerNodes.size()); talkerSection > 0; --talkerSection)
 		{
-			intersectionDataChanged(talkerSection - 1, listenerSection, dirtyFlags);
+			updateIntersectionData(talkerSection - 1, listenerSection, dirtyFlags);
 		}
+		notifyListenerLineDataChanged(listenerSection);
 
 		// Finally, recursively update the parents
 		if (andParents)
