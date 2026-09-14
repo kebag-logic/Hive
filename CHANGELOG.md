@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Channel Based Routing matrix displaying a Listener Channel as connected to every Channel of the Talker Entity, instead of the Talker Channel it is actually connected to
+- 'Collapsed by default' connection matrix setting not applied in Channel Based Routing mode
 - Entity connection summaries now computed in Channel Based Routing mode (Entity-Entity and Entity-Channel intersections were always displayed as not connected)
 - Channel Based Routing intersections no longer reporting the errors of the Stream connection carrying them (MSRP failure, wrong domain, stream format mismatch, interface down, latency error) nor their Media Locked state, in the matrix colors and in the tooltip
 - Connection matrix taking a very long time to populate on large networks while displayed in Stream Based Routing mode

@@ -299,15 +299,7 @@ void HeaderView::handleSectionInserted(QModelIndex const& /*parent*/, int first,
 			switch (node->type())
 			{
 				case Node::Type::Entity:
-					// Currently don't collapse in Channel mode (Because summary is not supported)
-					if (model->mode() == Model::Mode::Channel)
-					{
-						expanded = true;
-					}
-					else
-					{
-						expanded = !_collapsedByDefault;
-					}
+					expanded = !_collapsedByDefault;
 					break;
 				case Node::Type::RedundantOutput:
 				case Node::Type::RedundantInput:
@@ -324,8 +316,7 @@ void HeaderView::handleSectionInserted(QModelIndex const& /*parent*/, int first,
 					break;
 				case Node::Type::OutputChannel:
 				case Node::Type::InputChannel:
-					// Currently don't hide in Channel mode (Because summary is not supported)
-					visible = true;
+					visible = !_collapsedByDefault;
 					break;
 				default:
 					break;
