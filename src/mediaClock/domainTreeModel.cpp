@@ -1458,10 +1458,12 @@ void SampleRateDomainDelegate::paint(QPainter* painter, QStyleOptionViewItem con
 	if (treeItem->type() == AbstractTreeItem::Domain)
 	{
 		auto* domainTreeItem = static_cast<DomainTreeItem*>(treeItem);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 		if (option.state.testFlag(QStyle::State_Editing)) // not beeing set: QTBUG-68947
 		{
 			return;
 		}
+#endif
 		if (_treeView->isPersistentEditorOpen(index)) // workaround for that bug, can be removed once fixed.
 		{
 			return;
